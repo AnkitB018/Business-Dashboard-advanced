@@ -620,12 +620,12 @@ const SalesManagement: React.FC = () => {
                 <TableHead>
                   <TableRow>
                     <TableCell>Item Name</TableCell>
-                    <TableCell>Supplier</TableCell>
+                    <TableCell>Customer</TableCell>
                     <TableCell>Date</TableCell>
                     <TableCell>Quantity</TableCell>
                     <TableCell>Total Price</TableCell>
-                    <TableCell>Payment Method</TableCell>
-                    <TableCell>Status</TableCell>
+                    <TableCell>Payment</TableCell>
+                    <TableCell>Category</TableCell>
                     <TableCell>Actions</TableCell>
                   </TableRow>
                 </TableHead>
@@ -654,40 +654,40 @@ const SalesManagement: React.FC = () => {
                       <TableRow key={saleId}>
                         <TableCell>
                           <Typography variant="body2" fontWeight="medium">
-                            {saleData.purchase_id || saleData.sale_id || saleData.item_name || 'N/A'}
+                            {saleData.item_name || 'N/A'}
                           </Typography>
                         </TableCell>
                         <TableCell>
                           <Box>
                             <Typography variant="body2" fontWeight="medium">
-                              {saleData.supplier_name || saleData.customer_name || saleData.customerName || 'Unknown'}
+                              {saleData.customer_name || 'Unknown'}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
-                              Contact: {saleData.supplier_contact || saleData.customer_contact || 'N/A'}
+                              Contact: {saleData.customer_phone || 'N/A'}
                             </Typography>
                           </Box>
                         </TableCell>
-                        <TableCell>{new Date(saleData.date || saleData.order_date || saleData.created_date || Date.now()).toLocaleDateString()}</TableCell>
-                        <TableCell>{saleData.quantity || 'N/A'} {saleData.unit || 'pcs'}</TableCell>
+                        <TableCell>{new Date(saleData.date || Date.now()).toLocaleDateString()}</TableCell>
+                        <TableCell>{saleData.quantity || 'N/A'} pcs</TableCell>
                         <TableCell>
                           <Typography variant="body2" fontWeight="bold">
-                            {formatCurrency(saleData.total_price || saleData.totalAmount || saleData.unit_price || 0)}
+                            {formatCurrency(saleData.total_price || (saleData.quantity * saleData.unit_price) || 0)}
                           </Typography>
                         </TableCell>
                         <TableCell>
                           <Box>
-                            <Typography variant="caption">{saleData.payment_method || 'N/A'}</Typography><br />
+                            <Typography variant="caption">Cash</Typography><br />
                             <Chip 
-                              label={saleData.payment_status || 'pending'} 
-                              color={getPaymentStatusColor(saleData.payment_status || 'pending') as any}
+                              label="Completed" 
+                              color="success"
                               size="small"
                             />
                           </Box>
                         </TableCell>
                         <TableCell>
                           <Chip 
-                            label={saleData.category || saleData.status || 'draft'} 
-                            color={getStatusColor(saleData.category || saleData.status || 'draft') as any}
+                            label={saleData.category || 'General'} 
+                            color="info"
                             size="small"
                           />
                         </TableCell>

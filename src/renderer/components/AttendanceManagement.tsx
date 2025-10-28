@@ -460,10 +460,8 @@ const AttendanceManagement: React.FC = () => {
                   <TableRow>
                     <TableCell>Employee</TableCell>
                     <TableCell>Date</TableCell>
-                    <TableCell>Check In</TableCell>
-                    <TableCell>Check Out</TableCell>
-                    <TableCell>Working Hours</TableCell>
                     <TableCell>Status</TableCell>
+                    <TableCell>Overtime Hours</TableCell>
                     <TableCell>Actions</TableCell>
                   </TableRow>
                 </TableHead>
@@ -499,29 +497,16 @@ const AttendanceManagement: React.FC = () => {
                             </Typography>
                           </Box>
                         </TableCell>
-                        <TableCell>{new Date(record.date).toLocaleDateString()}</TableCell>
-                        <TableCell>{record.check_in_time || 'N/A'}</TableCell>
-                        <TableCell>
-                          {record.check_out_time ? (
-                            record.check_out_time
-                          ) : (
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              startIcon={<TimerOff />}
-                              onClick={() => handleQuickCheckOut(record._id!)}
-                            >
-                              Check Out
-                            </Button>
-                          )}
-                        </TableCell>
-                        <TableCell>{record.working_hours?.toFixed(2) || '0.00'} hrs</TableCell>
+                        <TableCell>{new Date(recordData.date).toLocaleDateString()}</TableCell>
                         <TableCell>
                           <Chip 
-                            label={record.status} 
-                            color={getStatusColor(record.status) as any}
+                            label={recordData.status || 'present'} 
+                            color={getStatusColor(recordData.status || 'present') as any}
                             size="small"
                           />
+                        </TableCell>
+                        <TableCell>
+                          {recordData.overtime_hours || 0} hrs
                         </TableCell>
                         <TableCell>
                           <Box sx={{ display: 'flex', gap: 1 }}>

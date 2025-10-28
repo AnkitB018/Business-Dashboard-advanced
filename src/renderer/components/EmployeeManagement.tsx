@@ -417,17 +417,17 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = () => {
                 
                 return (
                 <TableRow key={employeeKey} hover>
-                  <TableCell>{employee.emp_id || 'N/A'}</TableCell>
-                  <TableCell>{employee.name || 'N/A'}</TableCell>
-                  <TableCell>{employee.department || 'N/A'}</TableCell>
-                  <TableCell>{employee.position || 'N/A'}</TableCell>
-                  <TableCell>{employee.email || 'N/A'}</TableCell>
-                  <TableCell>{employee.phone || 'N/A'}</TableCell>
-                  <TableCell>₹{(employee.salary || 0).toLocaleString()}</TableCell>
+                  <TableCell>{employeeData.employee_id || employeeData.emp_id || 'N/A'}</TableCell>
+                  <TableCell>{employeeData.name || 'N/A'}</TableCell>
+                  <TableCell>{employeeData.department || 'N/A'}</TableCell>
+                  <TableCell>{employeeData.position || 'N/A'}</TableCell>
+                  <TableCell>{employeeData.email || 'N/A'}</TableCell>
+                  <TableCell>{employeeData.phone || 'N/A'}</TableCell>
+                  <TableCell>₹{(employeeData.daily_wage || employeeData.salary || 0).toLocaleString()}</TableCell>
                   <TableCell>
                     <Chip
-                      label={employee.is_active ? 'Active' : 'Inactive'}
-                      color={employee.is_active ? 'success' : 'default'}
+                      label={employeeData.status === 'active' ? 'Active' : (employeeData.is_active ? 'Active' : 'Inactive')}
+                      color={(employeeData.status === 'active' || employeeData.is_active) ? 'success' : 'default'}
                       size="small"
                     />
                   </TableCell>
