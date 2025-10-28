@@ -49,6 +49,7 @@ import {
   Payment,
 } from '@mui/icons-material';
 import { Purchase, PurchaseFormData, Supplier } from '../types/Purchase';
+import { formatCurrency, formatNumber, generateIndianBusinessData } from '../utils/formatters';
 
 const PurchaseManagement: React.FC = () => {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
@@ -120,71 +121,71 @@ const PurchaseManagement: React.FC = () => {
   const loadPurchasesData = async () => {
     try {
       setLoading(true);
-      // Mock purchases data
+      // Mock purchases data with Indian business context
       const mockPurchases: Purchase[] = [
         {
           _id: '1',
           purchase_id: 'PUR001',
-          item_name: 'Office Laptops',
+          item_name: 'Dell Laptops - Inspiron 15',
           quantity: 5,
-          unit_price: 1200.00,
-          total_price: 6000.00,
-          supplier_name: 'TechCorp Solutions',
-          supplier_contact: '123-456-7890',
-          supplier_address: '123 Tech Street, Silicon Valley',
+          unit_price: 65000,
+          total_price: 325000,
+          supplier_name: 'Tech Solutions India Pvt Ltd',
+          supplier_contact: '+91-9876543210',
+          supplier_address: 'A-204, Cyber City, Gurgaon, Haryana 122002',
           date: new Date('2024-01-15'),
           payment_method: 'Bank Transfer',
           payment_status: 'Paid',
-          paid_amount: 6000.00,
+          paid_amount: 325000,
           due_amount: 0,
-          invoice_number: 'INV-TC-001',
+          invoice_number: 'INV-TSI-001',
           delivery_date: new Date('2024-01-20'),
-          category: 'Equipment',
-          notes: 'Bulk order for new employees',
+          category: 'Technology',
+          notes: 'Bulk corporate order for new employees',
           created_date: new Date('2024-01-15'),
           last_modified: new Date('2024-01-15')
         },
         {
           _id: '2',
           purchase_id: 'PUR002',
-          item_name: 'Office Furniture',
-          quantity: 10,
-          unit_price: 450.00,
-          total_price: 4500.00,
-          supplier_name: 'FurnishPro Ltd',
-          supplier_contact: '098-765-4321',
-          supplier_address: '456 Furniture Ave, Downtown',
+          item_name: 'Ergonomic Office Furniture',
+          quantity: 15,
+          unit_price: 12000,
+          total_price: 180000,
+          supplier_name: 'FurnishCorp India Ltd',
+          supplier_contact: '+91-8765432109',
+          supplier_address: 'B-301, Industrial Area, Pune, Maharashtra 411001',
           date: new Date('2024-01-18'),
-          payment_method: 'Cheque',
+          payment_method: 'UPI',
           payment_status: 'Partial',
-          paid_amount: 2250.00,
-          due_amount: 2250.00,
-          invoice_number: 'INV-FP-002',
+          paid_amount: 90000,
+          due_amount: 90000,
+          invoice_number: 'INV-FCI-002',
           delivery_date: new Date('2024-01-25'),
           category: 'Office Supplies',
-          notes: 'Ergonomic chairs and desks',
+          notes: 'Ergonomic chairs and height-adjustable desks',
           created_date: new Date('2024-01-18'),
           last_modified: new Date('2024-01-20')
         },
         {
           _id: '3',
           purchase_id: 'PUR003',
-          item_name: 'Raw Materials - Steel',
-          quantity: 500,
-          unit_price: 15.50,
-          total_price: 7750.00,
-          supplier_name: 'MetalWorks Industries',
-          supplier_contact: '555-123-4567',
-          supplier_address: '789 Industrial Blvd, Manufacturing District',
+          item_name: 'Steel Raw Materials - Grade A',
+          quantity: 1000,
+          unit_price: 85,
+          total_price: 85000,
+          supplier_name: 'Bharat Steel Industries',
+          supplier_contact: '+91-7654321098',
+          supplier_address: 'Industrial Complex, Jamshedpur, Jharkhand 831001',
           date: new Date('2024-01-20'),
-          payment_method: 'UPI',
+          payment_method: 'Bank Transfer',
           payment_status: 'Outstanding',
           paid_amount: 0,
-          due_amount: 7750.00,
-          invoice_number: 'INV-MW-003',
+          due_amount: 85000,
+          invoice_number: 'INV-BSI-003',
           delivery_date: new Date('2024-01-30'),
           category: 'Raw Materials',
-          notes: 'High-grade steel for production',
+          notes: 'High-grade steel for manufacturing operations',
           created_date: new Date('2024-01-20'),
           last_modified: new Date('2024-01-20')
         }
@@ -202,47 +203,47 @@ const PurchaseManagement: React.FC = () => {
 
   const loadSuppliersData = async () => {
     try {
-      // Mock suppliers data
+      // Mock suppliers data with Indian business context
       const mockSuppliers: Supplier[] = [
         {
           _id: '1',
-          name: 'TechCorp Solutions',
-          contact_number: '123-456-7890',
-          email: 'contact@techcorp.com',
-          address: '123 Tech Street, Silicon Valley',
-          gst_number: 'GST123456789',
-          payment_terms: 'Net 30',
+          name: 'Tech Solutions India Pvt Ltd',
+          contact_number: '+91-9876543210',
+          email: 'contact@techsolutions.in',
+          address: 'A-204, Cyber City, Gurgaon, Haryana 122002',
+          gst_number: '07AABCT1234N1Z5',
+          payment_terms: 'Net 30 days',
           category: 'Technology',
-          total_purchases: 15000.00,
+          total_purchases: 500000,
           outstanding_amount: 0,
           created_date: new Date('2024-01-01'),
           last_modified: new Date('2024-01-15')
         },
         {
           _id: '2',
-          name: 'FurnishPro Ltd',
-          contact_number: '098-765-4321',
-          email: 'sales@furnishpro.com',
-          address: '456 Furniture Ave, Downtown',
-          gst_number: 'GST987654321',
-          payment_terms: 'Net 15',
-          category: 'Furniture',
-          total_purchases: 8500.00,
-          outstanding_amount: 2250.00,
+          name: 'FurnishCorp India Ltd',
+          contact_number: '+91-8765432109',
+          email: 'sales@furnishcorp.in',
+          address: 'B-301, Industrial Area, Pune, Maharashtra 411001',
+          gst_number: '27AABCF9876Q1Z2',
+          payment_terms: 'Net 15 days',
+          category: 'Furniture & Fixtures',
+          total_purchases: 350000,
+          outstanding_amount: 90000,
           created_date: new Date('2024-01-01'),
           last_modified: new Date('2024-01-20')
         },
         {
           _id: '3',
-          name: 'MetalWorks Industries',
-          contact_number: '555-123-4567',
-          email: 'orders@metalworks.com',
-          address: '789 Industrial Blvd, Manufacturing District',
-          gst_number: 'GST456789123',
-          payment_terms: 'Net 45',
+          name: 'Bharat Steel Industries',
+          contact_number: '+91-7654321098',
+          email: 'orders@bharatsteel.co.in',
+          address: 'Industrial Complex, Jamshedpur, Jharkhand 831001',
+          gst_number: '20AABCB5432L1Z8',
+          payment_terms: 'Net 45 days',
           category: 'Raw Materials',
-          total_purchases: 25000.00,
-          outstanding_amount: 7750.00,
+          total_purchases: 750000,
+          outstanding_amount: 85000,
           created_date: new Date('2024-01-01'),
           last_modified: new Date('2024-01-20')
         }
@@ -511,7 +512,7 @@ const PurchaseManagement: React.FC = () => {
             <Avatar sx={{ mx: 'auto', mb: 1, bgcolor: 'warning.main' }}>
               <TrendingDown />
             </Avatar>
-            <Typography variant="h6" fontWeight="bold">${totalSpent.toFixed(2)}</Typography>
+            <Typography variant="h6" fontWeight="bold">{formatCurrency(totalSpent)}</Typography>
             <Typography variant="body2" color="text.secondary">Total Spent</Typography>
           </CardContent>
         </Card>
@@ -520,7 +521,7 @@ const PurchaseManagement: React.FC = () => {
             <Avatar sx={{ mx: 'auto', mb: 1, bgcolor: 'error.main' }}>
               <Payment />
             </Avatar>
-            <Typography variant="h6" fontWeight="bold">${totalOutstanding.toFixed(2)}</Typography>
+            <Typography variant="h6" fontWeight="bold">{formatCurrency(totalOutstanding)}</Typography>
             <Typography variant="body2" color="text.secondary">Outstanding Amount</Typography>
           </CardContent>
         </Card>
@@ -649,11 +650,11 @@ const PurchaseManagement: React.FC = () => {
                         <TableCell>{purchase.quantity}</TableCell>
                         <TableCell>
                           <Typography variant="body2" fontWeight="bold">
-                            ${purchase.total_price.toFixed(2)}
+                            {formatCurrency(purchase.total_price)}
                           </Typography>
                           {purchase.due_amount && purchase.due_amount > 0 && (
                             <Typography variant="caption" color="error.main" display="block">
-                              Due: ${purchase.due_amount.toFixed(2)}
+                              Due: {formatCurrency(purchase.due_amount)}
                             </Typography>
                           )}
                         </TableCell>
@@ -771,13 +772,13 @@ const PurchaseManagement: React.FC = () => {
                     <Box>
                       <Typography variant="caption" color="text.secondary">Total Purchases</Typography>
                       <Typography variant="body2" fontWeight="bold">
-                        ${supplier.total_purchases.toFixed(2)}
+                        {formatCurrency(supplier.total_purchases)}
                       </Typography>
                     </Box>
                     <Box>
                       <Typography variant="caption" color="text.secondary">Outstanding</Typography>
                       <Typography variant="body2" fontWeight="bold" color={supplier.outstanding_amount > 0 ? 'error.main' : 'success.main'}>
-                        ${supplier.outstanding_amount.toFixed(2)}
+                        {formatCurrency(supplier.outstanding_amount)}
                       </Typography>
                     </Box>
                   </Box>
@@ -1044,8 +1045,8 @@ const PurchaseManagement: React.FC = () => {
                 <Typography variant="body2"><strong>Purchase ID:</strong> {viewingPurchase.purchase_id}</Typography>
                 <Typography variant="body2"><strong>Item:</strong> {viewingPurchase.item_name}</Typography>
                 <Typography variant="body2"><strong>Quantity:</strong> {viewingPurchase.quantity}</Typography>
-                <Typography variant="body2"><strong>Unit Price:</strong> ${viewingPurchase.unit_price.toFixed(2)}</Typography>
-                <Typography variant="body2"><strong>Total Price:</strong> ${viewingPurchase.total_price.toFixed(2)}</Typography>
+                <Typography variant="body2"><strong>Unit Price:</strong> {formatCurrency(viewingPurchase.unit_price)}</Typography>
+                <Typography variant="body2"><strong>Total Price:</strong> {formatCurrency(viewingPurchase.total_price)}</Typography>
                 <Typography variant="body2"><strong>Purchase Date:</strong> {new Date(viewingPurchase.date).toLocaleDateString()}</Typography>
                 <Typography variant="body2"><strong>Category:</strong> {viewingPurchase.category || 'Uncategorized'}</Typography>
                 {viewingPurchase.delivery_date && (
@@ -1073,10 +1074,10 @@ const PurchaseManagement: React.FC = () => {
                 <Typography variant="body2"><strong>Payment Method:</strong> {viewingPurchase.payment_method}</Typography>
                 <Typography variant="body2"><strong>Payment Status:</strong> {viewingPurchase.payment_status}</Typography>
                 {viewingPurchase.paid_amount !== undefined && (
-                  <Typography variant="body2"><strong>Paid Amount:</strong> ${viewingPurchase.paid_amount.toFixed(2)}</Typography>
+                  <Typography variant="body2"><strong>Paid Amount:</strong> {formatCurrency(viewingPurchase.paid_amount)}</Typography>
                 )}
                 {viewingPurchase.due_amount !== undefined && viewingPurchase.due_amount > 0 && (
-                  <Typography variant="body2" color="error.main"><strong>Due Amount:</strong> ${viewingPurchase.due_amount.toFixed(2)}</Typography>
+                  <Typography variant="body2" color="error.main"><strong>Due Amount:</strong> {formatCurrency(viewingPurchase.due_amount)}</Typography>
                 )}
               </Box>
             </Box>

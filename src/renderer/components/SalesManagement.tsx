@@ -48,6 +48,7 @@ import {
 } from '@mui/icons-material';
 import { Sale, SalesItem, Product, SalesFormData } from '../types/Sales';
 import { Customer } from '../types/Customer';
+import { formatCurrency, formatNumber, generateIndianBusinessData, convertToIndianPrice } from '../utils/formatters';
 
 const SalesManagement: React.FC = () => {
   const [sales, setSales] = useState<Sale[]>([]);
@@ -56,12 +57,12 @@ const SalesManagement: React.FC = () => {
     { 
       _id: '1', 
       productId: 'PROD001',
-      name: 'Laptop Computer', 
-      description: 'High-performance laptop for business use',
+      name: 'Dell Laptop Inspiron 15', 
+      description: 'Intel i5, 8GB RAM, 512GB SSD - Business laptop',
       category: 'Electronics',
-      sku: 'SKU001',
-      price: 999.99, 
-      costPrice: 750.00,
+      sku: 'DELL-INS15-001',
+      price: 65000, 
+      costPrice: 55000,
       stock: 25, 
       minStock: 5,
       unit: 'pcs',
@@ -72,12 +73,12 @@ const SalesManagement: React.FC = () => {
     { 
       _id: '2', 
       productId: 'PROD002',
-      name: 'Office Chair', 
-      description: 'Ergonomic office chair with lumbar support',
+      name: 'Ergonomic Office Chair', 
+      description: 'Premium ergonomic chair with lumbar support',
       category: 'Furniture',
-      sku: 'SKU002',
-      price: 299.99, 
-      costPrice: 200.00,
+      sku: 'ERGO-CHAIR-001',
+      price: 15000, 
+      costPrice: 10000,
       stock: 15, 
       minStock: 3,
       unit: 'pcs',
@@ -88,12 +89,28 @@ const SalesManagement: React.FC = () => {
     { 
       _id: '3', 
       productId: 'PROD003',
-      name: 'Wireless Mouse', 
+      name: 'Software Development License', 
+      description: 'Annual enterprise software development license',
+      category: 'Software',
+      sku: 'SOFT-DEV-LIC',
+      price: 120000, 
+      costPrice: 100000,
+      stock: 10, 
+      minStock: 2,
+      unit: 'license',
+      status: 'active',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    },
+    { 
+      _id: '4', 
+      productId: 'PROD004',
+      name: 'Wireless Mouse Logitech', 
       description: 'Bluetooth wireless mouse with precision tracking',
       category: 'Electronics',
-      sku: 'SKU003',
-      price: 49.99, 
-      costPrice: 30.00,
+      sku: 'LOGI-MOUSE-001',
+      price: 2500, 
+      costPrice: 1800,
       stock: 50, 
       minStock: 10,
       unit: 'pcs',
@@ -152,66 +169,96 @@ const SalesManagement: React.FC = () => {
   const loadSalesData = async () => {
     try {
       setLoading(true);
-      // Mock sales data that matches the type definitions
+      // Mock sales data with Indian business context
       const mockSales: Sale[] = [
         {
           _id: '1',
           saleId: 'SAL001',
           customerId: '1',
-          customerName: 'John Doe',
+          customerName: 'Rajesh Kumar',
           items: [
             { 
               productId: '1', 
-              productName: 'Laptop Computer', 
+              productName: 'Dell Laptop Inspiron 15', 
               quantity: 1, 
-              price: 999.99, 
-              discount: 0, 
-              tax: 75.00, 
-              total: 1074.99 
+              price: 65000, 
+              discount: 5000, 
+              tax: 10800, 
+              total: 70800 
             }
           ],
-          subtotal: 999.99,
-          totalDiscount: 0,
-          totalTax: 75.00,
-          totalAmount: 1074.99,
-          paymentMethod: 'card',
+          subtotal: 65000,
+          totalDiscount: 5000,
+          totalTax: 10800,
+          totalAmount: 70800,
+          paymentMethod: 'upi',
           paymentStatus: 'paid',
           status: 'delivered',
-          orderDate: new Date(),
-          deliveryDate: new Date(),
-          notes: 'Priority delivery',
+          orderDate: new Date('2024-01-15'),
+          deliveryDate: new Date('2024-01-18'),
+          notes: 'Corporate bulk order',
           createdBy: 'admin',
-          createdAt: new Date(),
-          updatedAt: new Date()
+          createdAt: new Date('2024-01-15'),
+          updatedAt: new Date('2024-01-18')
         },
         {
           _id: '2',
           saleId: 'SAL002',
           customerId: '2',
-          customerName: 'Jane Smith',
+          customerName: 'Priya Sharma',
           items: [
             { 
               productId: '2', 
-              productName: 'Office Chair', 
+              productName: 'Ergonomic Office Chair', 
               quantity: 2, 
-              price: 299.99, 
-              discount: 30.00, 
-              tax: 42.75, 
-              total: 612.73 
+              price: 15000, 
+              discount: 2000, 
+              tax: 5040, 
+              total: 33040 
             }
           ],
-          subtotal: 599.98,
-          totalDiscount: 30.00,
-          totalTax: 42.75,
-          totalAmount: 612.73,
-          paymentMethod: 'cash',
+          subtotal: 30000,
+          totalDiscount: 2000,
+          totalTax: 5040,
+          totalAmount: 33040,
+          paymentMethod: 'bank_transfer',
           paymentStatus: 'pending',
           status: 'confirmed',
-          orderDate: new Date(),
-          notes: '',
+          orderDate: new Date('2024-01-20'),
+          notes: 'Office furniture for startup',
           createdBy: 'admin',
-          createdAt: new Date(),
-          updatedAt: new Date()
+          createdAt: new Date('2024-01-20'),
+          updatedAt: new Date('2024-01-20')
+        },
+        {
+          _id: '3',
+          saleId: 'SAL003',
+          customerId: '3',
+          customerName: 'Vikram Singh',
+          items: [
+            { 
+              productId: '3', 
+              productName: 'Software Development License', 
+              quantity: 1, 
+              price: 120000, 
+              discount: 0, 
+              tax: 21600, 
+              total: 141600 
+            }
+          ],
+          subtotal: 120000,
+          totalDiscount: 0,
+          totalTax: 21600,
+          totalAmount: 141600,
+          paymentMethod: 'bank_transfer',
+          paymentStatus: 'paid',
+          status: 'delivered',
+          orderDate: new Date('2024-01-22'),
+          deliveryDate: new Date('2024-01-25'),
+          notes: 'Annual enterprise license',
+          createdBy: 'admin',
+          createdAt: new Date('2024-01-22'),
+          updatedAt: new Date('2024-01-25')
         }
       ];
       setSales(mockSales);
@@ -227,49 +274,70 @@ const SalesManagement: React.FC = () => {
 
   const loadCustomers = async () => {
     try {
-      // Mock customers data
+      // Mock customers data with Indian business context
       const mockCustomers: Customer[] = [
         {
           _id: '1',
           customerId: 'CUST001',
-          name: 'John Doe',
-          email: 'john@example.com',
-          phone: '123-456-7890',
+          name: 'Rajesh Kumar',
+          email: 'rajesh.kumar@techsolutions.in',
+          phone: '+91-9876543210',
           address: {
-            street: '123 Main St',
-            city: 'New York',
-            state: 'NY',
-            zipCode: '10001',
-            country: 'USA'
+            street: 'A-204, Cyber City',
+            city: 'Gurgaon',
+            state: 'Haryana',
+            zipCode: '122002',
+            country: 'India'
           },
-          company: 'Tech Corp',
-          gstNumber: 'GST001',
-          creditLimit: 50000,
+          company: 'Tech Solutions Pvt Ltd',
+          gstNumber: '07AABCT1234N1Z5',
+          creditLimit: 500000,
           outstandingBalance: 0,
           status: 'active',
-          createdAt: new Date(),
-          updatedAt: new Date()
+          createdAt: new Date('2024-01-01'),
+          updatedAt: new Date('2024-01-15')
         },
         {
           _id: '2',
           customerId: 'CUST002',
-          name: 'Jane Smith',
-          email: 'jane@example.com',
-          phone: '098-765-4321',
+          name: 'Priya Sharma',
+          email: 'priya@innovatedesign.co.in',
+          phone: '+91-8765432109',
           address: {
-            street: '456 Oak Ave',
-            city: 'Los Angeles',
-            state: 'CA',
-            zipCode: '90210',
-            country: 'USA'
+            street: 'B-301, IT Park',
+            city: 'Pune',
+            state: 'Maharashtra',
+            zipCode: '411001',
+            country: 'India'
           },
-          company: 'Design Studio',
-          gstNumber: 'GST002',
-          creditLimit: 30000,
+          company: 'Innovate Design Studio',
+          gstNumber: '27AABCI9999M1Z2',
+          creditLimit: 300000,
+          outstandingBalance: 33040,
+          status: 'active',
+          createdAt: new Date('2024-01-05'),
+          updatedAt: new Date('2024-01-20')
+        },
+        {
+          _id: '3',
+          customerId: 'CUST003',
+          name: 'Vikram Singh',
+          email: 'vikram@enterprisecorp.in',
+          phone: '+91-7654321098',
+          address: {
+            street: 'Tower A, Business District',
+            city: 'Bangalore',
+            state: 'Karnataka',
+            zipCode: '560001',
+            country: 'India'
+          },
+          company: 'Enterprise Corp India',
+          gstNumber: '29AABCE2222R1Z8',
+          creditLimit: 1000000,
           outstandingBalance: 0,
           status: 'active',
-          createdAt: new Date(),
-          updatedAt: new Date()
+          createdAt: new Date('2024-01-10'),
+          updatedAt: new Date('2024-01-25')
         }
       ];
       setCustomers(mockCustomers);
@@ -565,7 +633,7 @@ const SalesManagement: React.FC = () => {
             <Avatar sx={{ mx: 'auto', mb: 1, bgcolor: 'success.main' }}>
               <AttachMoney />
             </Avatar>
-            <Typography variant="h6" fontWeight="bold">${totalRevenue.toFixed(2)}</Typography>
+            <Typography variant="h6" fontWeight="bold">{formatCurrency(totalRevenue)}</Typography>
             <Typography variant="body2" color="text.secondary">Total Revenue</Typography>
           </CardContent>
         </Card>
@@ -583,7 +651,7 @@ const SalesManagement: React.FC = () => {
             <Avatar sx={{ mx: 'auto', mb: 1, bgcolor: 'warning.main' }}>
               <TrendingUp />
             </Avatar>
-            <Typography variant="h6" fontWeight="bold">${averageOrderValue.toFixed(2)}</Typography>
+            <Typography variant="h6" fontWeight="bold">{formatCurrency(averageOrderValue)}</Typography>
             <Typography variant="body2" color="text.secondary">Avg. Order Value</Typography>
           </CardContent>
         </Card>
@@ -694,7 +762,7 @@ const SalesManagement: React.FC = () => {
                         <TableCell>{sale.items.length} items</TableCell>
                         <TableCell>
                           <Typography variant="body2" fontWeight="bold">
-                            ${sale.totalAmount.toFixed(2)}
+                            {formatCurrency(sale.totalAmount)}
                           </Typography>
                         </TableCell>
                         <TableCell>
@@ -771,7 +839,7 @@ const SalesManagement: React.FC = () => {
                   >
                     {products.map((product) => (
                       <MenuItem key={product._id} value={product._id}>
-                        {product.name} - ${product.price}
+                        {product.name} - {formatCurrency(product.price)}
                       </MenuItem>
                     ))}
                   </Select>
@@ -816,7 +884,7 @@ const SalesManagement: React.FC = () => {
                               {item.productName}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
-                              ${item.price} × {item.quantity} - ${item.discount.toFixed(2)} + ${item.tax.toFixed(2)} = ${item.total.toFixed(2)}
+                              {formatCurrency(item.price)} × {item.quantity} - {formatCurrency(item.discount)} + {formatCurrency(item.tax)} = {formatCurrency(item.total)}
                             </Typography>
                           </Box>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -936,21 +1004,21 @@ const SalesManagement: React.FC = () => {
                       <Typography variant="subtitle2" gutterBottom>Order Summary</Typography>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                         <Typography variant="body2">Subtotal:</Typography>
-                        <Typography variant="body2">${calculateCartTotals().subtotal.toFixed(2)}</Typography>
+                        <Typography variant="body2">{formatCurrency(calculateCartTotals().subtotal)}</Typography>
                       </Box>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                         <Typography variant="body2">Discount:</Typography>
-                        <Typography variant="body2">-${calculateCartTotals().totalDiscount.toFixed(2)}</Typography>
+                        <Typography variant="body2">-{formatCurrency(calculateCartTotals().totalDiscount)}</Typography>
                       </Box>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                         <Typography variant="body2">Tax:</Typography>
-                        <Typography variant="body2">${calculateCartTotals().totalTax.toFixed(2)}</Typography>
+                        <Typography variant="body2">{formatCurrency(calculateCartTotals().totalTax)}</Typography>
                       </Box>
                       <Divider sx={{ my: 1 }} />
                       <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                         <Typography variant="subtitle1" fontWeight="bold">Total:</Typography>
                         <Typography variant="subtitle1" fontWeight="bold">
-                          ${calculateCartTotals().total.toFixed(2)}
+                          {formatCurrency(calculateCartTotals().total)}
                         </Typography>
                       </Box>
                     </CardContent>
@@ -1006,16 +1074,16 @@ const SalesManagement: React.FC = () => {
                     <Box key={index} sx={{ mb: 1, p: 1, border: 1, borderColor: 'divider', borderRadius: 1 }}>
                       <Typography variant="body2"><strong>{item.productName}</strong></Typography>
                       <Typography variant="caption">
-                        ${item.price} × {item.quantity} - ${item.discount.toFixed(2)} + ${item.tax.toFixed(2)} = ${item.total.toFixed(2)}
+                        {formatCurrency(item.price)} × {item.quantity} - {formatCurrency(item.discount)} + {formatCurrency(item.tax)} = {formatCurrency(item.total)}
                       </Typography>
                     </Box>
                   ))}
                   
                   <Divider sx={{ my: 2 }} />
-                  <Typography variant="body2"><strong>Subtotal:</strong> ${viewingSale.subtotal.toFixed(2)}</Typography>
-                  <Typography variant="body2"><strong>Total Discount:</strong> -${viewingSale.totalDiscount.toFixed(2)}</Typography>
-                  <Typography variant="body2"><strong>Total Tax:</strong> ${viewingSale.totalTax.toFixed(2)}</Typography>
-                  <Typography variant="h6"><strong>Total:</strong> ${viewingSale.totalAmount.toFixed(2)}</Typography>
+                  <Typography variant="body2"><strong>Subtotal:</strong> {formatCurrency(viewingSale.subtotal)}</Typography>
+                  <Typography variant="body2"><strong>Total Discount:</strong> -{formatCurrency(viewingSale.totalDiscount)}</Typography>
+                  <Typography variant="body2"><strong>Total Tax:</strong> {formatCurrency(viewingSale.totalTax)}</Typography>
+                  <Typography variant="h6"><strong>Total:</strong> {formatCurrency(viewingSale.totalAmount)}</Typography>
                 </Box>
               </Box>
             </Box>
