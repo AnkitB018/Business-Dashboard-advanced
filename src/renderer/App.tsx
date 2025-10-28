@@ -7,6 +7,7 @@ import DatabaseSetupDialog from './components/DatabaseSetupDialog';
 import EmployeeManagement from './components/EmployeeManagement';
 import AttendanceManagement from './components/AttendanceManagement';
 import SalesManagement from './components/SalesManagement';
+import SimpleSalesTest from './components/SimpleSalesTest';
 import PurchaseManagement from './components/PurchaseManagement';
 import ReportsAndAnalytics from './components/ReportsAndAnalytics';
 import databaseService from './services/DatabaseService';

@@ -50,10 +50,12 @@ import {
 } from '@mui/icons-material';
 import { Purchase, PurchaseFormData, Supplier } from '../types/Purchase';
 import { formatCurrency, formatNumber, generateIndianBusinessData } from '../utils/formatters';
+import databaseService from '../services/DatabaseService';
 
 const PurchaseManagement: React.FC = () => {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -121,79 +123,15 @@ const PurchaseManagement: React.FC = () => {
   const loadPurchasesData = async () => {
     try {
       setLoading(true);
-      // Mock purchases data with Indian business context
-      const mockPurchases: Purchase[] = [
-        {
-          _id: '1',
-          purchase_id: 'PUR001',
-          item_name: 'Dell Laptops - Inspiron 15',
-          quantity: 5,
-          unit_price: 65000,
-          total_price: 325000,
-          supplier_name: 'Tech Solutions India Pvt Ltd',
-          supplier_contact: '+91-9876543210',
-          supplier_address: 'A-204, Cyber City, Gurgaon, Haryana 122002',
-          date: new Date('2024-01-15'),
-          payment_method: 'Bank Transfer',
-          payment_status: 'Paid',
-          paid_amount: 325000,
-          due_amount: 0,
-          invoice_number: 'INV-TSI-001',
-          delivery_date: new Date('2024-01-20'),
-          category: 'Technology',
-          notes: 'Bulk corporate order for new employees',
-          created_date: new Date('2024-01-15'),
-          last_modified: new Date('2024-01-15')
-        },
-        {
-          _id: '2',
-          purchase_id: 'PUR002',
-          item_name: 'Ergonomic Office Furniture',
-          quantity: 15,
-          unit_price: 12000,
-          total_price: 180000,
-          supplier_name: 'FurnishCorp India Ltd',
-          supplier_contact: '+91-8765432109',
-          supplier_address: 'B-301, Industrial Area, Pune, Maharashtra 411001',
-          date: new Date('2024-01-18'),
-          payment_method: 'UPI',
-          payment_status: 'Partial',
-          paid_amount: 90000,
-          due_amount: 90000,
-          invoice_number: 'INV-FCI-002',
-          delivery_date: new Date('2024-01-25'),
-          category: 'Office Supplies',
-          notes: 'Ergonomic chairs and height-adjustable desks',
-          created_date: new Date('2024-01-18'),
-          last_modified: new Date('2024-01-20')
-        },
-        {
-          _id: '3',
-          purchase_id: 'PUR003',
-          item_name: 'Steel Raw Materials - Grade A',
-          quantity: 1000,
-          unit_price: 85,
-          total_price: 85000,
-          supplier_name: 'Bharat Steel Industries',
-          supplier_contact: '+91-7654321098',
-          supplier_address: 'Industrial Complex, Jamshedpur, Jharkhand 831001',
-          date: new Date('2024-01-20'),
-          payment_method: 'Bank Transfer',
-          payment_status: 'Outstanding',
-          paid_amount: 0,
-          due_amount: 85000,
-          invoice_number: 'INV-BSI-003',
-          delivery_date: new Date('2024-01-30'),
-          category: 'Raw Materials',
-          notes: 'High-grade steel for manufacturing operations',
-          created_date: new Date('2024-01-20'),
-          last_modified: new Date('2024-01-20')
-        }
-      ];
-      setPurchases(mockPurchases);
-      showSnackbar(`Loaded ${mockPurchases.length} purchase records`, 'success');
+      setError(null);
+      console.log('Loading purchases data...');
+      const purchasesData = await databaseService.getAllPurchases();
+      console.log('Purchases data loaded:', purchasesData);
+      setPurchases(purchasesData);
+      showSnackbar(`Loaded ${purchasesData.length} purchase records`, 'success');
     } catch (error) {
       console.error('Error loading purchases data:', error);
+      setError(`Failed to load purchases data: ${error}`);
       showSnackbar('Failed to load purchases data', 'error');
       setPurchases([]);
     } finally {
@@ -203,55 +141,26 @@ const PurchaseManagement: React.FC = () => {
 
   const loadSuppliersData = async () => {
     try {
-      // Mock suppliers data with Indian business context
-      const mockSuppliers: Supplier[] = [
-        {
-          _id: '1',
-          name: 'Tech Solutions India Pvt Ltd',
-          contact_number: '+91-9876543210',
-          email: 'contact@techsolutions.in',
-          address: 'A-204, Cyber City, Gurgaon, Haryana 122002',
-          gst_number: '07AABCT1234N1Z5',
-          payment_terms: 'Net 30 days',
-          category: 'Technology',
-          total_purchases: 500000,
-          outstanding_amount: 0,
-          created_date: new Date('2024-01-01'),
-          last_modified: new Date('2024-01-15')
-        },
-        {
-          _id: '2',
-          name: 'FurnishCorp India Ltd',
-          contact_number: '+91-8765432109',
-          email: 'sales@furnishcorp.in',
-          address: 'B-301, Industrial Area, Pune, Maharashtra 411001',
-          gst_number: '27AABCF9876Q1Z2',
-          payment_terms: 'Net 15 days',
-          category: 'Furniture & Fixtures',
-          total_purchases: 350000,
-          outstanding_amount: 90000,
-          created_date: new Date('2024-01-01'),
-          last_modified: new Date('2024-01-20')
-        },
-        {
-          _id: '3',
-          name: 'Bharat Steel Industries',
-          contact_number: '+91-7654321098',
-          email: 'orders@bharatsteel.co.in',
-          address: 'Industrial Complex, Jamshedpur, Jharkhand 831001',
-          gst_number: '20AABCB5432L1Z8',
-          payment_terms: 'Net 45 days',
-          category: 'Raw Materials',
-          total_purchases: 750000,
-          outstanding_amount: 85000,
-          created_date: new Date('2024-01-01'),
-          last_modified: new Date('2024-01-20')
-        }
-      ];
-      setSuppliers(mockSuppliers);
+      const suppliersData = await databaseService.getAllSuppliers();
+      setSuppliers(suppliersData);
     } catch (error) {
       console.error('Error loading suppliers data:', error);
       setSuppliers([]);
+    }
+  };
+
+  const seedSampleData = async () => {
+    try {
+      setLoading(true);
+      await databaseService.seedSampleData();
+      await loadPurchasesData();
+      await loadSuppliersData();
+      showSnackbar('Sample data added successfully!', 'success');
+    } catch (error) {
+      console.error('Error seeding sample data:', error);
+      showSnackbar('Failed to add sample data', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -492,6 +401,12 @@ const PurchaseManagement: React.FC = () => {
         📦 Purchase Management
       </Typography>
 
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
+
       {/* Statistics Cards */}
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 2, mb: 3 }}>
         <Card>
@@ -589,6 +504,16 @@ const PurchaseManagement: React.FC = () => {
               >
                 New Purchase
               </Button>
+              {purchases.length === 0 && !loading && (
+                <Button
+                  variant="outlined"
+                  startIcon={<Add />}
+                  onClick={seedSampleData}
+                  color="primary"
+                >
+                  Add Sample Data
+                </Button>
+              )}
               <Tooltip title="Refresh">
                 <IconButton onClick={loadPurchasesData}>
                   <Refresh />
@@ -627,8 +552,14 @@ const PurchaseManagement: React.FC = () => {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    paginatedPurchases.map((purchase) => (
-                      <TableRow key={purchase._id}>
+                    paginatedPurchases.map((purchase, index) => {
+                      const purchaseData = purchase as any;
+                      const purchaseKey = purchaseData._id ? 
+                        (typeof purchaseData._id === 'object' ? JSON.stringify(purchaseData._id) : purchaseData._id.toString()) 
+                        : `purchase-${index}`;
+                      
+                      return (
+                      <TableRow key={purchaseKey}>
                         <TableCell>
                           <Typography variant="body2" fontWeight="medium">
                             {purchase.purchase_id}
@@ -690,7 +621,8 @@ const PurchaseManagement: React.FC = () => {
                           </Box>
                         </TableCell>
                       </TableRow>
-                    ))
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>
@@ -730,8 +662,14 @@ const PurchaseManagement: React.FC = () => {
           </Box>
 
           <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: 3 }}>
-            {suppliers.map((supplier) => (
-              <Card key={supplier._id}>
+            {suppliers.map((supplier, index) => {
+              const supplierData = supplier as any;
+              const supplierKey = supplierData._id ? 
+                (typeof supplierData._id === 'object' ? JSON.stringify(supplierData._id) : supplierData._id.toString()) 
+                : `supplier-${index}`;
+              
+              return (
+              <Card key={supplierKey}>
                 <CardContent>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                     <Avatar sx={{ mr: 2, bgcolor: 'primary.main' }}>
@@ -784,7 +722,8 @@ const PurchaseManagement: React.FC = () => {
                   </Box>
                 </CardContent>
               </Card>
-            ))}
+              );
+            })}
           </Box>
         </Paper>
       )}

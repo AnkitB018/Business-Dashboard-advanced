@@ -76,47 +76,43 @@ const AttendanceManagement: React.FC = () => {
   const [quickCheckEmployee, setQuickCheckEmployee] = useState<string>('');
 
   useEffect(() => {
-    loadAttendanceData();
-    loadEmployees();
+    loadEmployeesAndAttendance();
   }, []);
 
-  const loadAttendanceData = async () => {
+  const loadEmployeesAndAttendance = async () => {
     try {
       setLoading(true);
+      // Load employees first
+      const allEmployees = await databaseService.getAllEmployees();
+      setEmployees(allEmployees);
+      
+      // Then load attendance data with employee information
       const result = await databaseService.getAllAttendance();
-      // Convert AttendanceRecord[] to Attendance[] format
-      const attendanceRecords: Attendance[] = result.map((record: any) => ({
-        _id: record._id,
-        attendance_id: record._id || `ATT${Date.now()}`,
-        employee_id: record.employeeId,
-        employee_name: employees.find(emp => emp._id === record.employeeId)?.name || 'Unknown',
-        date: new Date(record.date),
-        check_in_time: record.checkIn,
-        check_out_time: record.checkOut,
-        working_hours: record.hoursWorked || 0,
-        overtime_hours: 0,
-        status: record.status as any,
-        notes: record.notes,
-        created_date: record.createdAt || new Date(),
-        last_modified: record.updatedAt || new Date()
-      }));
+      const attendanceRecords: Attendance[] = result.map((record: any) => {
+        const employee = allEmployees.find(emp => emp._id === record.employeeId);
+        return {
+          _id: record._id,
+          attendance_id: record._id || `ATT${Date.now()}`,
+          employee_id: employee?.emp_id || record.employeeId,
+          employee_name: employee?.name || 'Unknown Employee',
+          date: new Date(record.date),
+          check_in_time: record.checkIn,
+          check_out_time: record.checkOut,
+          working_hours: record.hoursWorked || 0,
+          overtime_hours: 0,
+          status: record.status as any,
+          notes: record.notes,
+          created_date: record.createdAt || new Date(),
+          last_modified: record.updatedAt || new Date()
+        };
+      });
       setAttendanceRecords(attendanceRecords);
       showSnackbar(`Loaded ${attendanceRecords.length} attendance records`, 'success');
     } catch (error) {
-      console.error('Error loading attendance data:', error);
-      showSnackbar('Failed to load attendance data', 'error');
+      console.error('Error loading data:', error);
+      showSnackbar('Failed to load data', 'error');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadEmployees = async () => {
-    try {
-      const allEmployees = await databaseService.getAllEmployees();
-      setEmployees(allEmployees);
-    } catch (error) {
-      console.error('Error loading employees:', error);
-      setEmployees([]); // Set empty array on error
     }
   };
 
@@ -198,7 +194,7 @@ const AttendanceManagement: React.FC = () => {
       }
 
       handleCloseDialog();
-      loadAttendanceData();
+      loadEmployeesAndAttendance();
     } catch (error) {
       console.error('Error saving attendance:', error);
       showSnackbar('Failed to save attendance record', 'error');
@@ -235,7 +231,7 @@ const AttendanceManagement: React.FC = () => {
       await databaseService.addAttendanceRecord(attendanceRecord);
       showSnackbar(`${employee.name} checked in successfully at ${currentTime}`, 'success');
       setQuickCheckEmployee('');
-      loadAttendanceData();
+      loadEmployeesAndAttendance();
     } catch (error) {
       console.error('Error during quick check-in:', error);
       showSnackbar('Failed to check in employee', 'error');
@@ -262,7 +258,7 @@ const AttendanceManagement: React.FC = () => {
 
       await databaseService.updateAttendanceRecord(attendanceId, updateData);
       showSnackbar(`Employee checked out successfully at ${currentTime}`, 'success');
-      loadAttendanceData();
+      loadEmployeesAndAttendance();
     } catch (error) {
       console.error('Error during quick check-out:', error);
       showSnackbar('Failed to check out employee', 'error');
@@ -289,7 +285,7 @@ const AttendanceManagement: React.FC = () => {
     try {
       await databaseService.deleteAttendanceRecord(attendanceId);
       showSnackbar('Attendance record deleted successfully', 'success');
-      loadAttendanceData();
+      loadEmployeesAndAttendance();
     } catch (error) {
       console.error('Error deleting attendance:', error);
       showSnackbar('Failed to delete attendance record', 'error');
@@ -449,7 +445,7 @@ const AttendanceManagement: React.FC = () => {
                 Add Record
               </Button>
               <Tooltip title="Refresh">
-                <IconButton onClick={loadAttendanceData}>
+                <IconButton onClick={loadEmployeesAndAttendance}>
                   <Refresh />
                 </IconButton>
               </Tooltip>
@@ -485,8 +481,14 @@ const AttendanceManagement: React.FC = () => {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredRecords.map((record) => (
-                      <TableRow key={record._id}>
+                    filteredRecords.map((record, index) => {
+                      const recordData = record as any;
+                      const recordKey = recordData._id ? 
+                        (typeof recordData._id === 'object' ? JSON.stringify(recordData._id) : recordData._id.toString()) 
+                        : `record-${index}`;
+                      
+                      return (
+                      <TableRow key={recordKey}>
                         <TableCell>
                           <Box>
                             <Typography variant="body2" fontWeight="medium">
@@ -536,7 +538,8 @@ const AttendanceManagement: React.FC = () => {
                           </Box>
                         </TableCell>
                       </TableRow>
-                    ))
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>
@@ -589,8 +592,14 @@ const AttendanceManagement: React.FC = () => {
                   const recordDate = new Date(record.date);
                   return recordDate.toDateString() === today.toDateString();
                 })
-                .map((record) => (
-                  <Card key={record._id}>
+                .map((record, index) => {
+                  const recordData = record as any;
+                  const recordKey = recordData._id ? 
+                    (typeof recordData._id === 'object' ? JSON.stringify(recordData._id) : recordData._id.toString()) 
+                    : `today-record-${index}`;
+                  
+                  return (
+                  <Card key={recordKey}>
                     <CardContent>
                       <Typography variant="subtitle1" fontWeight="bold">
                         {record.employee_name}
@@ -621,7 +630,8 @@ const AttendanceManagement: React.FC = () => {
                       />
                     </CardContent>
                   </Card>
-                ))}
+                  );
+                })}
             </Box>
           </Box>
         </Paper>

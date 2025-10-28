@@ -180,7 +180,17 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = () => {
 
     setLoading(true);
     try {
-      await dbService.deleteEmployee(deleteEmployee._id);
+      // Convert ObjectId to string for database operation
+      const employeeData = deleteEmployee as any;
+      const employeeId = employeeData._id ? 
+        (typeof employeeData._id === 'object' ? JSON.stringify(employeeData._id) : employeeData._id.toString()) 
+        : '';
+      
+      if (!employeeId) {
+        throw new Error('Invalid employee ID');
+      }
+      
+      await dbService.deleteEmployee(employeeId);
       showSnackbar('Employee deleted successfully', 'success');
       setDeleteEmployee(null);
       loadEmployees();
@@ -398,8 +408,15 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {paginatedEmployees.map((employee) => (
-                <TableRow key={employee._id || employee.emp_id} hover>
+              {paginatedEmployees.map((employee, index) => {
+                const employeeData = employee as any; // Type assertion for flexibility
+                // Handle ObjectId properly - convert to string
+                const employeeKey = employeeData._id ? 
+                  (typeof employeeData._id === 'object' ? JSON.stringify(employeeData._id) : employeeData._id.toString()) 
+                  : (employeeData.emp_id || `employee-${index}`);
+                
+                return (
+                <TableRow key={employeeKey} hover>
                   <TableCell>{employee.emp_id || 'N/A'}</TableCell>
                   <TableCell>{employee.name || 'N/A'}</TableCell>
                   <TableCell>{employee.department || 'N/A'}</TableCell>
@@ -436,7 +453,8 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = () => {
                     </Box>
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         </TableContainer>

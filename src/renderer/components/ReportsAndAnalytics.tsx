@@ -43,6 +43,8 @@ import {
   PieChart,
   Timeline,
 } from '@mui/icons-material';
+import { formatCurrency } from '../utils/formatters';
+import databaseService from '../services/DatabaseService';
 
 interface ReportFilters {
   dateRange: string;
@@ -177,8 +179,69 @@ const ReportsAndAnalytics: React.FC = () => {
   const loadReportsData = async () => {
     setLoading(true);
     try {
-      // Mock data loading - replace with actual API calls
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Load real data from database
+      const [salesData, attendanceData, purchaseData, employeeData] = await Promise.all([
+        databaseService.getAllSales(),
+        databaseService.getAllAttendance(),
+        databaseService.getAllPurchases(),
+        databaseService.getAllEmployees()
+      ]);
+
+      // Calculate sales metrics from real data
+      const totalRevenue = salesData.reduce((sum, sale) => sum + (sale.totalAmount || 0), 0);
+      const totalOrders = salesData.length;
+      const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+      setSalesMetrics({
+        totalRevenue,
+        totalOrders,
+        averageOrderValue,
+        topProducts: [], // Calculate from sales items if needed
+        monthlySales: [] // Calculate from sales data if needed
+      });
+
+      // Calculate attendance metrics from real data
+      const today = new Date().toDateString();
+      const todaysAttendance = attendanceData.filter(record => 
+        new Date(record.date).toDateString() === today
+      );
+      const presentToday = todaysAttendance.filter(record => record.status === 'Present').length;
+      const totalEmployees = employeeData.length;
+
+      setAttendanceMetrics({
+        totalEmployees,
+        presentToday,
+        absentToday: totalEmployees - presentToday,
+        lateArrivals: 0, // Calculate if you have late arrival data
+        averageWorkingHours: 8.0,
+        departmentAttendance: [] // Group by department if you have department data
+      });
+
+      // Calculate purchase metrics from real data
+      const totalSpent = purchaseData.reduce((sum, purchase) => sum + (purchase.total_price || 0), 0);
+      const totalPurchaseOrders = purchaseData.length;
+
+      setPurchaseMetrics({
+        totalSpent,
+        totalOrders: totalPurchaseOrders,
+        topSuppliers: [], // Calculate from supplier data
+        categoryBreakdown: [], // Group by category
+        outstandingPayments: purchaseData.reduce((sum, purchase) => sum + (purchase.due_amount || 0), 0)
+      });
+
+      // Calculate financial metrics
+      const totalExpenses = totalSpent;
+      const netProfit = totalRevenue - totalExpenses;
+      const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+
+      setFinancialMetrics({
+        totalRevenue,
+        totalExpenses,
+        netProfit,
+        profitMargin,
+        cashFlow: [] // Calculate monthly cash flow if needed
+      });
+
       showSnackbar('Reports data loaded successfully', 'success');
     } catch (error) {
       console.error('Error loading reports data:', error);
@@ -378,7 +441,7 @@ const ReportsAndAnalytics: React.FC = () => {
                 }}>
                   <AttachMoney />
                 </Avatar>
-                <Typography variant="h5" fontWeight="bold">${financialMetrics.totalRevenue.toLocaleString()}</Typography>
+                <Typography variant="h5" fontWeight="bold">{formatCurrency(financialMetrics.totalRevenue)}</Typography>
                 <Typography variant="body2" color="text.secondary">Total Revenue</Typography>
                 <Chip 
                   label={`+${financialMetrics.profitMargin}% profit margin`} 
@@ -415,7 +478,7 @@ const ReportsAndAnalytics: React.FC = () => {
                 <Typography variant="h5" fontWeight="bold">{salesMetrics.totalOrders}</Typography>
                 <Typography variant="body2" color="text.secondary">Total Orders</Typography>
                 <Chip 
-                  label={`$${salesMetrics.averageOrderValue.toFixed(2)} avg`} 
+                  label={`${formatCurrency(salesMetrics.averageOrderValue)} avg`} 
                   color="primary" 
                   size="small" 
                   sx={{ mt: 1 }}
@@ -428,10 +491,10 @@ const ReportsAndAnalytics: React.FC = () => {
                 <Avatar sx={{ mx: 'auto', mb: 1, bgcolor: 'warning.main' }}>
                   <TrendingDown />
                 </Avatar>
-                <Typography variant="h5" fontWeight="bold">${purchaseMetrics.totalSpent.toLocaleString()}</Typography>
+                <Typography variant="h5" fontWeight="bold">{formatCurrency(purchaseMetrics.totalSpent)}</Typography>
                 <Typography variant="body2" color="text.secondary">Total Expenses</Typography>
                 <Chip 
-                  label={`$${purchaseMetrics.outstandingPayments.toLocaleString()} pending`} 
+                  label={`${formatCurrency(purchaseMetrics.outstandingPayments)} pending`} 
                   color="warning" 
                   size="small" 
                   sx={{ mt: 1 }}
@@ -518,7 +581,7 @@ const ReportsAndAnalytics: React.FC = () => {
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography>Total Revenue:</Typography>
-                  <Typography fontWeight="bold">${salesMetrics.totalRevenue.toLocaleString()}</Typography>
+                  <Typography fontWeight="bold">{formatCurrency(salesMetrics.totalRevenue)}</Typography>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography>Total Orders:</Typography>
@@ -526,7 +589,7 @@ const ReportsAndAnalytics: React.FC = () => {
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography>Average Order Value:</Typography>
-                  <Typography fontWeight="bold">${salesMetrics.averageOrderValue.toFixed(2)}</Typography>
+                  <Typography fontWeight="bold">{formatCurrency(salesMetrics.averageOrderValue)}</Typography>
                 </Box>
                 <Divider />
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -553,7 +616,7 @@ const ReportsAndAnalytics: React.FC = () => {
                       <TableRow key={product.name}>
                         <TableCell>{product.name}</TableCell>
                         <TableCell align="right">{product.sales}</TableCell>
-                        <TableCell align="right">${product.revenue.toLocaleString()}</TableCell>
+                        <TableCell align="right">{formatCurrency(product.revenue)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -646,7 +709,7 @@ const ReportsAndAnalytics: React.FC = () => {
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography>Total Spent:</Typography>
-                  <Typography fontWeight="bold">${purchaseMetrics.totalSpent.toLocaleString()}</Typography>
+                  <Typography fontWeight="bold">{formatCurrency(purchaseMetrics.totalSpent)}</Typography>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography>Total Orders:</Typography>
@@ -659,7 +722,7 @@ const ReportsAndAnalytics: React.FC = () => {
                 <Divider />
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography color="warning.main">Outstanding Payments:</Typography>
-                  <Typography fontWeight="bold" color="warning.main">${purchaseMetrics.outstandingPayments.toLocaleString()}</Typography>
+                  <Typography fontWeight="bold" color="warning.main">{formatCurrency(purchaseMetrics.outstandingPayments)}</Typography>
                 </Box>
               </Box>
             </Paper>
@@ -680,7 +743,7 @@ const ReportsAndAnalytics: React.FC = () => {
                     {purchaseMetrics.topSuppliers.map((supplier) => (
                       <TableRow key={supplier.name}>
                         <TableCell>{supplier.name}</TableCell>
-                        <TableCell align="right">${supplier.amount.toLocaleString()}</TableCell>
+                        <TableCell align="right">{formatCurrency(supplier.amount)}</TableCell>
                         <TableCell align="right">{supplier.orders}</TableCell>
                       </TableRow>
                     ))}
@@ -697,7 +760,7 @@ const ReportsAndAnalytics: React.FC = () => {
                   <Box key={category.category} sx={{ mb: 2 }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
                       <Typography variant="body2">{category.category}</Typography>
-                      <Typography variant="body2">${category.amount.toLocaleString()} ({category.percentage}%)</Typography>
+                      <Typography variant="body2">{formatCurrency(category.amount)} ({category.percentage}%)</Typography>
                     </Box>
                     <Box
                       sx={{
@@ -734,16 +797,16 @@ const ReportsAndAnalytics: React.FC = () => {
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography>Total Revenue:</Typography>
-                  <Typography fontWeight="bold" color="success.main">${financialMetrics.totalRevenue.toLocaleString()}</Typography>
+                  <Typography fontWeight="bold" color="success.main">{formatCurrency(financialMetrics.totalRevenue)}</Typography>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography>Total Expenses:</Typography>
-                  <Typography fontWeight="bold" color="error.main">${financialMetrics.totalExpenses.toLocaleString()}</Typography>
+                  <Typography fontWeight="bold" color="error.main">{formatCurrency(financialMetrics.totalExpenses)}</Typography>
                 </Box>
                 <Divider />
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography>Net Profit:</Typography>
-                  <Typography fontWeight="bold" color="primary.main">${financialMetrics.netProfit.toLocaleString()}</Typography>
+                  <Typography fontWeight="bold" color="primary.main">{formatCurrency(financialMetrics.netProfit)}</Typography>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography>Profit Margin:</Typography>

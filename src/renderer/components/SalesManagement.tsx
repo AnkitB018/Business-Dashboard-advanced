@@ -49,10 +49,12 @@ import {
 import { Sale, SalesItem, Product, SalesFormData } from '../types/Sales';
 import { Customer } from '../types/Customer';
 import { formatCurrency, formatNumber, generateIndianBusinessData, convertToIndianPrice } from '../utils/formatters';
+import databaseService from '../services/DatabaseService';
 
 const SalesManagement: React.FC = () => {
   const [sales, setSales] = useState<Sale[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const [products] = useState<Product[]>([
     { 
       _id: '1', 
@@ -169,102 +171,16 @@ const SalesManagement: React.FC = () => {
   const loadSalesData = async () => {
     try {
       setLoading(true);
-      // Mock sales data with Indian business context
-      const mockSales: Sale[] = [
-        {
-          _id: '1',
-          saleId: 'SAL001',
-          customerId: '1',
-          customerName: 'Rajesh Kumar',
-          items: [
-            { 
-              productId: '1', 
-              productName: 'Dell Laptop Inspiron 15', 
-              quantity: 1, 
-              price: 65000, 
-              discount: 5000, 
-              tax: 10800, 
-              total: 70800 
-            }
-          ],
-          subtotal: 65000,
-          totalDiscount: 5000,
-          totalTax: 10800,
-          totalAmount: 70800,
-          paymentMethod: 'upi',
-          paymentStatus: 'paid',
-          status: 'delivered',
-          orderDate: new Date('2024-01-15'),
-          deliveryDate: new Date('2024-01-18'),
-          notes: 'Corporate bulk order',
-          createdBy: 'admin',
-          createdAt: new Date('2024-01-15'),
-          updatedAt: new Date('2024-01-18')
-        },
-        {
-          _id: '2',
-          saleId: 'SAL002',
-          customerId: '2',
-          customerName: 'Priya Sharma',
-          items: [
-            { 
-              productId: '2', 
-              productName: 'Ergonomic Office Chair', 
-              quantity: 2, 
-              price: 15000, 
-              discount: 2000, 
-              tax: 5040, 
-              total: 33040 
-            }
-          ],
-          subtotal: 30000,
-          totalDiscount: 2000,
-          totalTax: 5040,
-          totalAmount: 33040,
-          paymentMethod: 'bank_transfer',
-          paymentStatus: 'pending',
-          status: 'confirmed',
-          orderDate: new Date('2024-01-20'),
-          notes: 'Office furniture for startup',
-          createdBy: 'admin',
-          createdAt: new Date('2024-01-20'),
-          updatedAt: new Date('2024-01-20')
-        },
-        {
-          _id: '3',
-          saleId: 'SAL003',
-          customerId: '3',
-          customerName: 'Vikram Singh',
-          items: [
-            { 
-              productId: '3', 
-              productName: 'Software Development License', 
-              quantity: 1, 
-              price: 120000, 
-              discount: 0, 
-              tax: 21600, 
-              total: 141600 
-            }
-          ],
-          subtotal: 120000,
-          totalDiscount: 0,
-          totalTax: 21600,
-          totalAmount: 141600,
-          paymentMethod: 'bank_transfer',
-          paymentStatus: 'paid',
-          status: 'delivered',
-          orderDate: new Date('2024-01-22'),
-          deliveryDate: new Date('2024-01-25'),
-          notes: 'Annual enterprise license',
-          createdBy: 'admin',
-          createdAt: new Date('2024-01-22'),
-          updatedAt: new Date('2024-01-25')
-        }
-      ];
-      setSales(mockSales);
-      showSnackbar(`Loaded ${mockSales.length} sales records`, 'success');
+      setError(null);
+      console.log('Loading sales data...');
+      const salesData = await databaseService.getAllSales();
+      console.log('Sales data loaded:', salesData);
+      console.log('First sale object structure:', salesData[0]);
+      setSales(salesData);
+      showSnackbar(`Loaded ${salesData.length} sales records`, 'success');
     } catch (error) {
       console.error('Error loading sales data:', error);
+      setError(`Failed to load sales data: ${error}`);
       showSnackbar('Failed to load sales data', 'error');
       setSales([]);
     } finally {
@@ -274,76 +190,26 @@ const SalesManagement: React.FC = () => {
 
   const loadCustomers = async () => {
     try {
-      // Mock customers data with Indian business context
-      const mockCustomers: Customer[] = [
-        {
-          _id: '1',
-          customerId: 'CUST001',
-          name: 'Rajesh Kumar',
-          email: 'rajesh.kumar@techsolutions.in',
-          phone: '+91-9876543210',
-          address: {
-            street: 'A-204, Cyber City',
-            city: 'Gurgaon',
-            state: 'Haryana',
-            zipCode: '122002',
-            country: 'India'
-          },
-          company: 'Tech Solutions Pvt Ltd',
-          gstNumber: '07AABCT1234N1Z5',
-          creditLimit: 500000,
-          outstandingBalance: 0,
-          status: 'active',
-          createdAt: new Date('2024-01-01'),
-          updatedAt: new Date('2024-01-15')
-        },
-        {
-          _id: '2',
-          customerId: 'CUST002',
-          name: 'Priya Sharma',
-          email: 'priya@innovatedesign.co.in',
-          phone: '+91-8765432109',
-          address: {
-            street: 'B-301, IT Park',
-            city: 'Pune',
-            state: 'Maharashtra',
-            zipCode: '411001',
-            country: 'India'
-          },
-          company: 'Innovate Design Studio',
-          gstNumber: '27AABCI9999M1Z2',
-          creditLimit: 300000,
-          outstandingBalance: 33040,
-          status: 'active',
-          createdAt: new Date('2024-01-05'),
-          updatedAt: new Date('2024-01-20')
-        },
-        {
-          _id: '3',
-          customerId: 'CUST003',
-          name: 'Vikram Singh',
-          email: 'vikram@enterprisecorp.in',
-          phone: '+91-7654321098',
-          address: {
-            street: 'Tower A, Business District',
-            city: 'Bangalore',
-            state: 'Karnataka',
-            zipCode: '560001',
-            country: 'India'
-          },
-          company: 'Enterprise Corp India',
-          gstNumber: '29AABCE2222R1Z8',
-          creditLimit: 1000000,
-          outstandingBalance: 0,
-          status: 'active',
-          createdAt: new Date('2024-01-10'),
-          updatedAt: new Date('2024-01-25')
-        }
-      ];
-      setCustomers(mockCustomers);
+      const customersData = await databaseService.getAllCustomers();
+      setCustomers(customersData);
     } catch (error) {
       console.error('Error loading customers:', error);
       setCustomers([]);
+    }
+  };
+
+  const seedSampleData = async () => {
+    try {
+      setLoading(true);
+      await databaseService.seedSampleData();
+      await loadSalesData();
+      await loadCustomers();
+      showSnackbar('Sample data added successfully!', 'success');
+    } catch (error) {
+      console.error('Error seeding sample data:', error);
+      showSnackbar('Failed to add sample data', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -527,7 +393,12 @@ const SalesManagement: React.FC = () => {
     if (!window.confirm('Are you sure you want to delete this sale?')) return;
 
     try {
-      setSales(sales.filter(sale => sale._id !== saleId));
+      setSales(sales.filter(sale => {
+        const currentSaleId = (sale as any)._id ? 
+          (typeof (sale as any)._id === 'object' ? JSON.stringify((sale as any)._id) : (sale as any)._id.toString()) 
+          : '';
+        return currentSaleId !== saleId;
+      }));
       showSnackbar('Sale deleted successfully', 'success');
     } catch (error) {
       console.error('Error deleting sale:', error);
@@ -586,18 +457,33 @@ const SalesManagement: React.FC = () => {
   };
 
   const filteredSales = sales.filter(sale => {
-    const matchesSearch = sale.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         sale.saleId.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || sale.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    try {
+      const saleData = sale as any; // Type assertion for database flexibility
+      const customerName = saleData.customerName || saleData.customer_name || '';
+      const saleId = saleData.saleId || saleData.sale_id || saleData._id || '';
+      const matchesSearch = customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           saleId.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || sale.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    } catch (error) {
+      console.error('Error filtering sale:', sale, error);
+      return true; // Include the sale if there's an error
+    }
   });
 
   const paginatedSales = filteredSales.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
   // Calculate statistics
   const totalSales = filteredSales.length;
-  const totalRevenue = filteredSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
-  const completedSales = filteredSales.filter(s => s.status === 'delivered').length;
+  const totalRevenue = filteredSales.reduce((sum, sale) => {
+    const saleData = sale as any;
+    return sum + (saleData.total_price || saleData.totalAmount || saleData.total_amount || saleData.unit_price || 0);
+  }, 0);
+  const completedSales = filteredSales.filter(sale => {
+    const saleData = sale as any;
+    return (saleData.status === 'delivered' || saleData.status === 'completed' || 
+            saleData.payment_status === 'paid' || saleData.payment_status === 'completed');
+  }).length;
   const averageOrderValue = totalSales > 0 ? totalRevenue / totalSales : 0;
 
   return (
@@ -612,6 +498,12 @@ const SalesManagement: React.FC = () => {
       }}>
         💰 Sales Management
       </Typography>
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
 
       {/* Statistics Cards */}
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 2, mb: 3 }}>
@@ -703,6 +595,16 @@ const SalesManagement: React.FC = () => {
               >
                 New Sale
               </Button>
+              {sales.length === 0 && !loading && (
+                <Button
+                  variant="outlined"
+                  startIcon={<Add />}
+                  onClick={seedSampleData}
+                  color="primary"
+                >
+                  Add Sample Data
+                </Button>
+              )}
               <Tooltip title="Refresh">
                 <IconButton onClick={loadSalesData}>
                   <Refresh />
@@ -717,12 +619,12 @@ const SalesManagement: React.FC = () => {
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Sale ID</TableCell>
-                    <TableCell>Customer</TableCell>
+                    <TableCell>Item Name</TableCell>
+                    <TableCell>Supplier</TableCell>
                     <TableCell>Date</TableCell>
-                    <TableCell>Items</TableCell>
-                    <TableCell>Total Amount</TableCell>
-                    <TableCell>Payment</TableCell>
+                    <TableCell>Quantity</TableCell>
+                    <TableCell>Total Price</TableCell>
+                    <TableCell>Payment Method</TableCell>
                     <TableCell>Status</TableCell>
                     <TableCell>Actions</TableCell>
                   </TableRow>
@@ -741,44 +643,51 @@ const SalesManagement: React.FC = () => {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    paginatedSales.map((sale) => (
-                      <TableRow key={sale._id}>
+                    paginatedSales.map((sale, index) => {
+                      const saleData = sale as any; // Type assertion for flexibility
+                      // Handle ObjectId properly - convert to string
+                      const saleId = saleData._id ? 
+                        (typeof saleData._id === 'object' ? JSON.stringify(saleData._id) : saleData._id.toString()) 
+                        : `sale-${index}`;
+                      
+                      return (
+                      <TableRow key={saleId}>
                         <TableCell>
                           <Typography variant="body2" fontWeight="medium">
-                            {sale.saleId}
+                            {saleData.purchase_id || saleData.sale_id || saleData.item_name || 'N/A'}
                           </Typography>
                         </TableCell>
                         <TableCell>
                           <Box>
                             <Typography variant="body2" fontWeight="medium">
-                              {sale.customerName}
+                              {saleData.supplier_name || saleData.customer_name || saleData.customerName || 'Unknown'}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
-                              ID: {sale.customerId}
+                              Contact: {saleData.supplier_contact || saleData.customer_contact || 'N/A'}
                             </Typography>
                           </Box>
                         </TableCell>
-                        <TableCell>{new Date(sale.orderDate).toLocaleDateString()}</TableCell>
-                        <TableCell>{sale.items.length} items</TableCell>
+                        <TableCell>{new Date(saleData.date || saleData.order_date || saleData.created_date || Date.now()).toLocaleDateString()}</TableCell>
+                        <TableCell>{saleData.quantity || 'N/A'} {saleData.unit || 'pcs'}</TableCell>
                         <TableCell>
                           <Typography variant="body2" fontWeight="bold">
-                            {formatCurrency(sale.totalAmount)}
+                            {formatCurrency(saleData.total_price || saleData.totalAmount || saleData.unit_price || 0)}
                           </Typography>
                         </TableCell>
                         <TableCell>
                           <Box>
-                            <Typography variant="caption">{sale.paymentMethod}</Typography><br />
+                            <Typography variant="caption">{saleData.payment_method || 'N/A'}</Typography><br />
                             <Chip 
-                              label={sale.paymentStatus} 
-                              color={getPaymentStatusColor(sale.paymentStatus) as any}
+                              label={saleData.payment_status || 'pending'} 
+                              color={getPaymentStatusColor(saleData.payment_status || 'pending') as any}
                               size="small"
                             />
                           </Box>
                         </TableCell>
                         <TableCell>
                           <Chip 
-                            label={sale.status} 
-                            color={getStatusColor(sale.status) as any}
+                            label={saleData.category || saleData.status || 'draft'} 
+                            color={getStatusColor(saleData.category || saleData.status || 'draft') as any}
                             size="small"
                           />
                         </TableCell>
@@ -795,14 +704,15 @@ const SalesManagement: React.FC = () => {
                               </IconButton>
                             </Tooltip>
                             <Tooltip title="Delete">
-                              <IconButton size="small" color="error" onClick={() => handleDelete(sale._id!)}>
+                              <IconButton size="small" color="error" onClick={() => handleDelete(saleId)}>
                                 <Delete />
                               </IconButton>
                             </Tooltip>
                           </Box>
                         </TableCell>
                       </TableRow>
-                    ))
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>
