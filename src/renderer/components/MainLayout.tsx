@@ -21,6 +21,7 @@ import {
   Menu as MenuIcon,
   Dashboard,
   People,
+  MonetizationOn,
   AccessTime,
   ShoppingCart,
   Inventory,
@@ -65,6 +66,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({
       path: '/employees'
     },
     {
+      id: 'wages',
+      title: 'Wage Management',
+      icon: 'MonetizationOn',
+      path: '/wages'
+    },
+    {
       id: 'attendance',
       title: 'Attendance Tracking',
       icon: 'AccessTime',
@@ -100,6 +107,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
     const icons: Record<string, React.ReactNode> = {
       Dashboard: <Dashboard />,
       People: <People />,
+      MonetizationOn: <MonetizationOn />,
       AccessTime: <AccessTime />,
       ShoppingCart: <ShoppingCart />,
       Inventory: <Inventory />,

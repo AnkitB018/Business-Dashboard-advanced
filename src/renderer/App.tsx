@@ -10,6 +10,7 @@ import SalesManagement from './components/SalesManagement';
 import SimpleSalesTest from './components/SimpleSalesTest';
 import PurchaseManagement from './components/PurchaseManagement';
 import ReportsAndAnalytics from './components/ReportsAndAnalytics';
+import WageManagement from './components/WageManagement';
 import databaseService from './services/DatabaseService';
 import { DatabaseConfig, ConnectionStatus } from './types/Common';
 
@@ -214,6 +215,8 @@ function App() {
         return <DashboardPage onNavigate={handleNavigate} />;
       case 'employees':
         return <EmployeesPage />;
+      case 'wages':
+        return <WagesPage />;
       case 'attendance':
         return <AttendancePage />;
       case 'sales':
@@ -450,6 +453,8 @@ const DashboardPage = ({ onNavigate }: { onNavigate: (page: string) => void }) =
 };
 
 const EmployeesPage = () => <EmployeeManagement />;
+
+const WagesPage = () => <WageManagement />;
 
 const AttendancePage = () => <AttendanceManagement />;
 

@@ -138,6 +138,24 @@ class DatabaseService {
     throw new Error(result.message || 'Failed to fetch employee attendance');
   }
 
+  async getAttendanceByEmployeeAndDateRange(employeeId: string, startDate: string, endDate: string): Promise<any[]> {
+    if (!this.isConnected) throw new Error('Database not connected');
+    
+    const result = await window.electronAPI.dbOperation('find', 'attendance', { 
+      query: { 
+        employee_id: employeeId,
+        date: {
+          $gte: startDate,
+          $lte: endDate
+        }
+      } 
+    });
+    if (result.success) {
+      return result.data || [];
+    }
+    throw new Error(result.message || 'Failed to fetch employee attendance for date range');
+  }
+
   async addAttendanceRecord(record: Omit<AttendanceRecord, '_id'>): Promise<AttendanceRecord> {
     if (!this.isConnected) throw new Error('Database not connected');
     
