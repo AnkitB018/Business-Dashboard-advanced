@@ -1,10 +1,6 @@
 import { Employee } from '../types/Employee';
 import { Attendance } from '../types/Attendance';
-
-export interface DatabaseConfig {
-  connectionString: string;
-  databaseName: string;
-}
+import { DatabaseConfig } from '../types/Common';
 
 // Simplified interface for UI compatibility
 interface AttendanceRecord {
@@ -26,7 +22,14 @@ class DatabaseService {
   // Connect to database
   async connect(config: DatabaseConfig): Promise<{ success: boolean; message: string }> {
     try {
-      const result = await window.electronAPI.connectDatabase(config);
+      // Generate connection string from individual fields if not provided
+      const connectionString = config.connectionString || 
+        `mongodb+srv://${encodeURIComponent(config.username)}:${encodeURIComponent(config.password)}@${config.clusterUrl}`;
+      
+      const result = await window.electronAPI.connectDatabase({
+        connectionString,
+        databaseName: config.databaseName
+      });
       this.isConnected = result.success;
       return result;
     } catch (error) {
@@ -235,7 +238,39 @@ class DatabaseService {
       if (configStr) {
         const config = JSON.parse(configStr);
         console.log('Parsed config:', config);
-        return config;
+        
+        // Handle backward compatibility - if old format, convert it
+        if (config.connectionString && !config.username) {
+          try {
+            const url = new URL(config.connectionString);
+            return {
+              username: decodeURIComponent(url.username || ''),
+              password: decodeURIComponent(url.password || ''),
+              clusterUrl: url.hostname + (url.port ? `:${url.port}` : ''),
+              databaseName: config.databaseName || '',
+              connectionString: config.connectionString
+            };
+          } catch (error) {
+            console.error('Error parsing legacy connection string:', error);
+            // Return default config if parsing fails
+            return {
+              username: '',
+              password: '',
+              clusterUrl: '',
+              databaseName: config.databaseName || '',
+              connectionString: config.connectionString
+            };
+          }
+        }
+        
+        // Ensure all required fields are present
+        return {
+          username: config.username || '',
+          password: config.password || '',
+          clusterUrl: config.clusterUrl || '',
+          databaseName: config.databaseName || '',
+          connectionString: config.connectionString || ''
+        };
       }
       console.log('No database config found in localStorage');
       return null;
@@ -260,10 +295,44 @@ class DatabaseService {
     }
   }
 
+  async updateConfig(config: DatabaseConfig): Promise<void> {
+    try {
+      // Generate connection string from individual fields
+      const configWithConnectionString = {
+        ...config,
+        connectionString: config.connectionString || 
+          `mongodb+srv://${encodeURIComponent(config.username)}:${encodeURIComponent(config.password)}@${config.clusterUrl}`
+      };
+      
+      localStorage.setItem('database-config', JSON.stringify(configWithConnectionString));
+      console.log('Database config updated in localStorage:', configWithConnectionString);
+      
+      // Test the new configuration
+      const result = await this.connect(configWithConnectionString);
+      if (result.success) {
+        this.isConnected = true;
+        console.log('Database config updated and connection verified');
+      } else {
+        throw new Error('Failed to connect with new configuration: ' + result.message);
+      }
+    } catch (error) {
+      console.error('Error updating database config:', error);
+      throw error;
+    }
+  }
+
   async saveConfig(config: DatabaseConfig): Promise<boolean> {
     try {
       console.log('Saving database config:', config);
-      localStorage.setItem('database-config', JSON.stringify(config));
+      
+      // Generate connection string from individual fields if not provided
+      const configWithConnectionString = {
+        ...config,
+        connectionString: config.connectionString || 
+          `mongodb+srv://${encodeURIComponent(config.username)}:${encodeURIComponent(config.password)}@${config.clusterUrl}`
+      };
+      
+      localStorage.setItem('database-config', JSON.stringify(configWithConnectionString));
       console.log('Database config saved successfully');
       // Verify it was saved
       const saved = localStorage.getItem('database-config');
@@ -640,6 +709,38 @@ class DatabaseService {
     }
   }
 }
+
+// Utility functions for database configuration
+export const generateConnectionString = (config: DatabaseConfig): string => {
+  const { username, password, clusterUrl } = config;
+  if (!username || !password || !clusterUrl) {
+    throw new Error('Missing required connection parameters');
+  }
+  return `mongodb+srv://${encodeURIComponent(username)}:${encodeURIComponent(password)}@${clusterUrl}`;
+};
+
+export const parseConnectionString = (connectionString: string): Partial<DatabaseConfig> => {
+  try {
+    const url = new URL(connectionString);
+    return {
+      username: decodeURIComponent(url.username || ''),
+      password: decodeURIComponent(url.password || ''),
+      clusterUrl: url.hostname + (url.port ? `:${url.port}` : ''),
+      connectionString
+    };
+  } catch (error) {
+    console.error('Error parsing connection string:', error);
+    return {};
+  }
+};
+
+export const prepareConfigForConnection = (config: DatabaseConfig): DatabaseConfig => {
+  const connectionString = config.connectionString || generateConnectionString(config);
+  return {
+    ...config,
+    connectionString
+  };
+};
 
 export const databaseService = new DatabaseService();
 export default databaseService;

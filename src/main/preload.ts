@@ -12,6 +12,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   showMessageBox: (options: any) => ipcRenderer.invoke('show-message-box', options),
   showSaveDialog: (options: any) => ipcRenderer.invoke('show-save-dialog', options),
   showOpenDialog: (options: any) => ipcRenderer.invoke('show-open-dialog', options),
+  
+  // File system operations
+  openPath: (folderPath: string) => ipcRenderer.invoke('open-path', folderPath),
+  saveFile: (relativePath: string, data: Uint8Array) => ipcRenderer.invoke('save-file', relativePath, data),
 });
 
 // Type definitions for TypeScript
@@ -23,6 +27,8 @@ declare global {
       showMessageBox: (options: any) => Promise<any>;
       showSaveDialog: (options: any) => Promise<any>;
       showOpenDialog: (options: any) => Promise<any>;
+      openPath: (folderPath: string) => Promise<{ success: boolean; path?: string; error?: string }>;
+      saveFile: (relativePath: string, data: Uint8Array) => Promise<{ success: boolean; filePath?: string; error?: string }>;
     };
   }
 }

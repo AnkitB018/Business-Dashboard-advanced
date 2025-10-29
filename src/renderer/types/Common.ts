@@ -1,7 +1,10 @@
 // Database configuration interface
 export interface DatabaseConfig {
-  connectionString: string;
+  username: string;
+  password: string;
+  clusterUrl: string;
   databaseName: string;
+  connectionString?: string; // Auto-generated from above fields
 }
 
 // API response interface for database operations

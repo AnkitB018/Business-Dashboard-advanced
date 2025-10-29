@@ -1,5 +1,7 @@
-﻿import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+﻿import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
 import * as path from 'path';
+import * as os from 'os';
+import * as fs from 'fs';
 import { MongoClient, Db } from 'mongodb';
 
 // Keep a global reference of the window object
@@ -144,4 +146,47 @@ ipcMain.handle('show-save-dialog', async (event, options) => {
 ipcMain.handle('show-open-dialog', async (event, options) => {
   const result = await dialog.showOpenDialog(mainWindow, options);
   return result;
+});
+
+// File system handlers
+ipcMain.handle('open-path', async (event, folderPath: string) => {
+  try {
+    // Create the backup folder if it doesn't exist
+    const documentsPath = os.homedir();
+    const backupPath = path.join(documentsPath, 'Documents', 'Business Dashboard', 'Backups');
+    
+    // Ensure the directory exists
+    if (!fs.existsSync(backupPath)) {
+      fs.mkdirSync(backupPath, { recursive: true });
+    }
+    
+    // Open the folder in file explorer
+    await shell.openPath(backupPath);
+    return { success: true, path: backupPath };
+  } catch (error) {
+    console.error('Error opening path:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+});
+
+ipcMain.handle('save-file', async (event, relativePath: string, data: Uint8Array) => {
+  try {
+    // Create the full path using the user's Documents folder
+    const documentsPath = os.homedir();
+    const fullPath = path.join(documentsPath, relativePath);
+    
+    // Ensure the directory exists
+    const dir = path.dirname(fullPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    
+    // Convert Uint8Array to Buffer and write the file
+    const buffer = Buffer.from(data);
+    fs.writeFileSync(fullPath, buffer);
+    return { success: true, filePath: fullPath };
+  } catch (error) {
+    console.error('Error saving file:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
 });

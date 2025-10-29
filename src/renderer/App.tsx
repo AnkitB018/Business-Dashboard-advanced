@@ -11,6 +11,7 @@ import SimpleSalesTest from './components/SimpleSalesTest';
 import PurchaseManagement from './components/PurchaseManagement';
 import ReportsAndAnalytics from './components/ReportsAndAnalytics';
 import WageManagement from './components/WageManagement';
+import SettingsManagement from './components/SettingsManagement';
 import databaseService from './services/DatabaseService';
 import { DatabaseConfig, ConnectionStatus } from './types/Common';
 
@@ -464,11 +465,6 @@ const PurchasesPage = () => <PurchaseManagement />;
 
 const ReportsPage = () => <ReportsAndAnalytics />;
 
-const SettingsPage = () => (
-  <Paper sx={{ p: 3 }}>
-    <Typography variant="h4" gutterBottom>⚙️ Settings</Typography>
-    <Typography>Configure application settings, database connections, and user preferences.</Typography>
-  </Paper>
-);
+const SettingsPage = () => <SettingsManagement />;
 
 export default App;

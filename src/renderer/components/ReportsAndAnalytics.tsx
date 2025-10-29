@@ -25,6 +25,8 @@ import {
   Chip,
   Alert,
   Snackbar,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import {
   TrendingUp,
@@ -42,7 +44,28 @@ import {
   BarChart,
   PieChart,
   Timeline,
+  CalendarMonth,
+  NavigateBefore,
+  NavigateNext,
+  GetApp,
 } from '@mui/icons-material';
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  BarChart as RechartsBarChart,
+  Bar,
+  PieChart as RechartsPieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
 import { formatCurrency } from '../utils/formatters';
 import databaseService from '../services/DatabaseService';
 
@@ -165,6 +188,14 @@ const ReportsAndAnalytics: React.FC = () => {
       { month: 'May', income: 32000, expenses: 21000, profit: 11000 }
     ]
   });
+
+  // Calendar state for attendance view
+  const [calendarDate, setCalendarDate] = useState(new Date());
+  const [selectedEmployee, setSelectedEmployee] = useState('all');
+  const [calendarData, setCalendarData] = useState<any[]>([]);
+  
+  // Chart colors for data visualization
+  const chartColors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#ff0000', '#00ff00', '#0000ff'];
 
   const [snackbar, setSnackbar] = useState({ 
     open: false, 
@@ -314,6 +345,113 @@ const ReportsAndAnalytics: React.FC = () => {
     return total > 0 ? (present / total) * 100 : 0;
   };
 
+  // Calendar helper functions
+  const renderCalendarDays = () => {
+    const year = calendarDate.getFullYear();
+    const month = calendarDate.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const days = [];
+
+    // Add empty cells for days before the first day of the month
+    for (let i = 0; i < firstDay; i++) {
+      days.push(
+        <Box key={`empty-${i}`} sx={{ p: 1, minHeight: 60 }} />
+      );
+    }
+
+    // Add cells for each day of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month, day);
+      const dateStr = date.toISOString().split('T')[0];
+      const isToday = date.toDateString() === new Date().toDateString();
+      const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+      
+      // Mock attendance status - in real app, this would come from database
+      const attendanceStatus = getAttendanceStatus(date);
+      
+      days.push(
+        <Box
+          key={day}
+          sx={{
+            p: 1,
+            minHeight: 60,
+            border: 1,
+            borderColor: isToday ? 'primary.main' : 'grey.300',
+            borderRadius: 1,
+            backgroundColor: getDateBackgroundColor(attendanceStatus, isWeekend),
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            '&:hover': {
+              backgroundColor: 'grey.100',
+            }
+          }}
+          onClick={() => handleDateClick(date)}
+        >
+          <Typography variant="body2" fontWeight={isToday ? 'bold' : 'normal'}>
+            {day}
+          </Typography>
+          {attendanceStatus !== 'weekend' && (
+            <Typography variant="caption" color="white">
+              {getAttendanceLabel(attendanceStatus)}
+            </Typography>
+          )}
+        </Box>
+      );
+    }
+
+    return days;
+  };
+
+  const getAttendanceStatus = (date: Date) => {
+    // Mock logic - in real app, query database for attendance on this date
+    const day = date.getDay();
+    const dayOfMonth = date.getDate();
+    
+    if (day === 0 || day === 6) return 'weekend'; // Weekend
+    if (dayOfMonth % 10 === 0) return 'absent'; // Mock some absences
+    if (dayOfMonth % 7 === 0) return 'late'; // Mock some late arrivals
+    if (dayOfMonth % 15 === 0) return 'halfday'; // Mock some half days
+    return 'present';
+  };
+
+  const getDateBackgroundColor = (status: string, isWeekend: boolean) => {
+    if (isWeekend) return 'grey.200';
+    switch (status) {
+      case 'present': return '#4caf50';
+      case 'absent': return '#f44336';
+      case 'late': return '#ff9800';
+      case 'halfday': return '#2196f3';
+      case 'holiday': return '#9e9e9e';
+      default: return 'transparent';
+    }
+  };
+
+  const getAttendanceLabel = (status: string) => {
+    switch (status) {
+      case 'present': return 'P';
+      case 'absent': return 'A';
+      case 'late': return 'L';
+      case 'halfday': return 'H';
+      case 'holiday': return 'X';
+      default: return '';
+    }
+  };
+
+  const handleDateClick = (date: Date) => {
+    // Handle date click - could show detailed attendance info for that date
+    console.log('Date clicked:', date);
+  };
+
+  const exportChart = (chartType: string) => {
+    // Implement chart export functionality
+    showSnackbar(`Exporting ${chartType} chart...`, 'success');
+    console.log('Exporting chart:', chartType);
+  };
+
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom sx={{ 
@@ -418,12 +556,14 @@ const ReportsAndAnalytics: React.FC = () => {
 
       {/* Report Tabs */}
       <Paper sx={{ mb: 3 }}>
-        <Tabs value={tabValue} onChange={handleTabChange}>
-          <Tab label="Dashboard Overview" />
-          <Tab label="Sales Analytics" />
-          <Tab label="Attendance Reports" />
-          <Tab label="Purchase Analytics" />
-          <Tab label="Financial Summary" />
+        <Tabs value={tabValue} onChange={handleTabChange} variant="scrollable" scrollButtons="auto">
+          <Tab label="Dashboard Overview" icon={<Assessment />} iconPosition="start" />
+          <Tab label="Sales Analytics" icon={<BarChart />} iconPosition="start" />
+          <Tab label="Attendance Reports" icon={<People />} iconPosition="start" />
+          <Tab label="Attendance Calendar" icon={<CalendarMonth />} iconPosition="start" />
+          <Tab label="Purchase Analytics" icon={<ShoppingCart />} iconPosition="start" />
+          <Tab label="Financial Summary" icon={<AttachMoney />} iconPosition="start" />
+          <Tab label="Data Visualizations" icon={<Timeline />} iconPosition="start" />
         </Tabs>
       </Paper>
 
@@ -508,25 +648,21 @@ const ReportsAndAnalytics: React.FC = () => {
             {/* Sales Trend */}
             <Paper sx={{ p: 3 }}>
               <Typography variant="h6" gutterBottom>Monthly Sales Trend</Typography>
-              <Box sx={{ height: 200, display: 'flex', alignItems: 'end', gap: 1, mt: 2 }}>
-                {salesMetrics.monthlySales.map((data, index) => (
-                  <Box key={data.month} sx={{ flex: 1, textAlign: 'center' }}>
-                    <Box
-                      sx={{
-                        height: `${(data.revenue / 35000) * 150}px`,
-                        background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)',
-                        borderRadius: 1,
-                        mb: 1,
-                        minHeight: 20
-                      }}
-                    />
-                    <Typography variant="caption">{data.month}</Typography>
-                    <Typography variant="caption" display="block" color="text.secondary">
-                      ${(data.revenue / 1000).toFixed(0)}k
-                    </Typography>
-                  </Box>
-                ))}
-              </Box>
+              <ResponsiveContainer width="100%" height={200}>
+                <LineChart data={salesMetrics.monthlySales}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <RechartsTooltip formatter={(value) => [formatCurrency(Number(value)), 'Revenue']} />
+                  <Line 
+                    type="monotone" 
+                    dataKey="revenue" 
+                    stroke="#dc2626" 
+                    strokeWidth={2}
+                    dot={{ fill: '#dc2626', strokeWidth: 2, r: 4 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
             </Paper>
 
             {/* Department Attendance */}
@@ -699,8 +835,132 @@ const ReportsAndAnalytics: React.FC = () => {
         </Box>
       )}
 
-      {/* Purchase Analytics Tab */}
+      {/* Attendance Calendar Tab */}
       {tabValue === 3 && (
+        <Box>
+          <Paper sx={{ p: 3, mb: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <Typography variant="h5" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <CalendarMonth color="primary" />
+                Attendance Calendar View
+              </Typography>
+              
+              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                <FormControl size="small" sx={{ minWidth: 200 }}>
+                  <InputLabel>Employee</InputLabel>
+                  <Select
+                    value={selectedEmployee}
+                    label="Employee"
+                    onChange={(e) => setSelectedEmployee(e.target.value)}
+                  >
+                    <MenuItem value="all">All Employees</MenuItem>
+                    {/* Will be populated with real employee data */}
+                  </Select>
+                </FormControl>
+                
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <IconButton onClick={() => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() - 1))}>
+                    <NavigateBefore />
+                  </IconButton>
+                  <Typography variant="h6" sx={{ minWidth: 150, textAlign: 'center' }}>
+                    {calendarDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                  </Typography>
+                  <IconButton onClick={() => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1))}>
+                    <NavigateNext />
+                  </IconButton>
+                </Box>
+              </Box>
+            </Box>
+
+            {/* Calendar Grid */}
+            <Box sx={{ mb: 3 }}>
+              <Paper sx={{ p: 2 }}>
+                <Box sx={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: 'repeat(7, 1fr)', 
+                  gap: 1,
+                  mb: 2
+                }}>
+                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                    <Box key={day} sx={{ 
+                      p: 1, 
+                      textAlign: 'center', 
+                      fontWeight: 'bold',
+                      backgroundColor: 'grey.100',
+                      borderRadius: 1
+                    }}>
+                      {day}
+                    </Box>
+                  ))}
+                </Box>
+                
+                <Box sx={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: 'repeat(7, 1fr)', 
+                  gap: 1
+                }}>
+                  {renderCalendarDays()}
+                </Box>
+              </Paper>
+            </Box>
+
+            {/* Calendar Legend */}
+            <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', justifyContent: 'center' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ width: 16, height: 16, backgroundColor: '#4caf50', borderRadius: 1 }} />
+                <Typography variant="body2">Present</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ width: 16, height: 16, backgroundColor: '#f44336', borderRadius: 1 }} />
+                <Typography variant="body2">Absent</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ width: 16, height: 16, backgroundColor: '#ff9800', borderRadius: 1 }} />
+                <Typography variant="body2">Late</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ width: 16, height: 16, backgroundColor: '#2196f3', borderRadius: 1 }} />
+                <Typography variant="body2">Half Day</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ width: 16, height: 16, backgroundColor: '#9e9e9e', borderRadius: 1 }} />
+                <Typography variant="body2">Holiday</Typography>
+              </Box>
+            </Box>
+          </Paper>
+
+          {/* Calendar Summary Statistics */}
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2 }}>
+            <Card>
+              <CardContent sx={{ textAlign: 'center' }}>
+                <Typography variant="h4" color="success.main">92%</Typography>
+                <Typography variant="body2" color="text.secondary">Attendance Rate</Typography>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent sx={{ textAlign: 'center' }}>
+                <Typography variant="h4" color="primary.main">23</Typography>
+                <Typography variant="body2" color="text.secondary">Present Days</Typography>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent sx={{ textAlign: 'center' }}>
+                <Typography variant="h4" color="error.main">2</Typography>
+                <Typography variant="body2" color="text.secondary">Absent Days</Typography>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent sx={{ textAlign: 'center' }}>
+                <Typography variant="h4" color="warning.main">3</Typography>
+                <Typography variant="body2" color="text.secondary">Late Arrivals</Typography>
+              </CardContent>
+            </Card>
+          </Box>
+        </Box>
+      )}
+
+      {/* Purchase Analytics Tab */}
+      {tabValue === 4 && (
         <Box>
           <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 3 }}>
             {/* Purchase Summary */}
@@ -717,7 +977,7 @@ const ReportsAndAnalytics: React.FC = () => {
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography>Average Order:</Typography>
-                  <Typography fontWeight="bold">${(purchaseMetrics.totalSpent / purchaseMetrics.totalOrders).toFixed(2)}</Typography>
+                  <Typography fontWeight="bold">{formatCurrency(purchaseMetrics.totalSpent / purchaseMetrics.totalOrders)}</Typography>
                 </Box>
                 <Divider />
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -788,7 +1048,7 @@ const ReportsAndAnalytics: React.FC = () => {
       )}
 
       {/* Financial Summary Tab */}
-      {tabValue === 4 && (
+      {tabValue === 5 && (
         <Box>
           <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 3 }}>
             {/* Financial Overview */}
@@ -857,7 +1117,7 @@ const ReportsAndAnalytics: React.FC = () => {
                       {data.month}
                     </Typography>
                     <Typography variant="caption" display="block" color="text.secondary">
-                      P: ${(data.profit / 1000).toFixed(0)}k
+                      P: ₹{(data.profit / 1000).toFixed(0)}k
                     </Typography>
                   </Box>
                 ))}
@@ -878,6 +1138,167 @@ const ReportsAndAnalytics: React.FC = () => {
               </Box>
             </Paper>
           </Box>
+        </Box>
+      )}
+
+      {/* Data Visualizations Tab */}
+      {tabValue === 6 && (
+        <Box>
+          <Typography variant="h5" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
+            <Timeline color="primary" />
+            Interactive Data Visualizations
+          </Typography>
+
+          {/* Sales Trend Chart */}
+          <Paper sx={{ p: 3, mb: 3 }}>
+            <Typography variant="h6" gutterBottom>Sales Revenue Trend</Typography>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={salesMetrics.monthlySales}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <RechartsTooltip formatter={(value) => [formatCurrency(Number(value)), 'Revenue']} />
+                <Legend />
+                <Line 
+                  type="monotone" 
+                  dataKey="revenue" 
+                  stroke="#8884d8" 
+                  strokeWidth={3}
+                  dot={{ fill: '#8884d8', strokeWidth: 2, r: 6 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </Paper>
+
+          {/* Sales vs Orders Chart */}
+          <Paper sx={{ p: 3, mb: 3 }}>
+            <Typography variant="h6" gutterBottom>Sales Performance Analysis</Typography>
+            <ResponsiveContainer width="100%" height={300}>
+              <RechartsBarChart data={salesMetrics.monthlySales}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis yAxisId="left" />
+                <YAxis yAxisId="right" orientation="right" />
+                <RechartsTooltip />
+                <Legend />
+                <Bar yAxisId="left" dataKey="revenue" fill="#8884d8" name="Revenue" />
+                <Bar yAxisId="right" dataKey="orders" fill="#82ca9d" name="Orders" />
+              </RechartsBarChart>
+            </ResponsiveContainer>
+          </Paper>
+
+          {/* Top Products Pie Chart */}
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3, mb: 3 }}>
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom>Top Products by Revenue</Typography>
+              <ResponsiveContainer width="100%" height={300}>
+                <RechartsPieChart>
+                  <RechartsTooltip formatter={(value) => [formatCurrency(Number(value)), 'Revenue']} />
+                  <Legend />
+                  <Pie
+                    data={salesMetrics.topProducts}
+                    dataKey="revenue"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    label={({ name, percent }: any) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                  >
+                    {salesMetrics.topProducts.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
+                    ))}
+                  </Pie>
+                </RechartsPieChart>
+              </ResponsiveContainer>
+            </Paper>
+
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom>Department Attendance</Typography>
+              <ResponsiveContainer width="100%" height={300}>
+                <RechartsBarChart data={attendanceMetrics.departmentAttendance} layout="horizontal">
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis type="number" />
+                  <YAxis type="category" dataKey="department" />
+                  <RechartsTooltip />
+                  <Legend />
+                  <Bar dataKey="present" fill="#4caf50" name="Present" />
+                  <Bar dataKey="total" fill="#e0e0e0" name="Total" />
+                </RechartsBarChart>
+              </ResponsiveContainer>
+            </Paper>
+          </Box>
+
+          {/* Financial Cash Flow Chart */}
+          <Paper sx={{ p: 3, mb: 3 }}>
+            <Typography variant="h6" gutterBottom>Monthly Cash Flow Analysis</Typography>
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={financialMetrics.cashFlow}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <RechartsTooltip formatter={(value) => [formatCurrency(Number(value)), '']} />
+                <Legend />
+                <Area 
+                  type="monotone" 
+                  dataKey="income" 
+                  stackId="1" 
+                  stroke="#4caf50" 
+                  fill="#4caf50" 
+                  name="Income"
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="expenses" 
+                  stackId="2" 
+                  stroke="#f44336" 
+                  fill="#f44336" 
+                  name="Expenses"
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="profit" 
+                  stroke="#2196f3" 
+                  strokeWidth={3}
+                  name="Profit"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </Paper>
+
+          {/* Export Options for Charts */}
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>Export Charts</Typography>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              <Button 
+                variant="outlined" 
+                startIcon={<GetApp />}
+                onClick={() => exportChart('sales-trend')}
+              >
+                Export Sales Trend
+              </Button>
+              <Button 
+                variant="outlined" 
+                startIcon={<GetApp />}
+                onClick={() => exportChart('product-analysis')}
+              >
+                Export Product Analysis
+              </Button>
+              <Button 
+                variant="outlined" 
+                startIcon={<GetApp />}
+                onClick={() => exportChart('attendance-chart')}
+              >
+                Export Attendance Chart
+              </Button>
+              <Button 
+                variant="outlined" 
+                startIcon={<GetApp />}
+                onClick={() => exportChart('cash-flow')}
+              >
+                Export Cash Flow
+              </Button>
+            </Box>
+          </Paper>
         </Box>
       )}
 

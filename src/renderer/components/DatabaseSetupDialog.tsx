@@ -124,8 +124,11 @@ const DatabaseSetupDialog: React.FC<DatabaseSetupDialogProps> = ({
 
     try {
       const config: DatabaseConfig = {
-        connectionString: buildConnectionUri(),
-        databaseName: formData.database
+        username: formData.username,
+        password: formData.password,
+        clusterUrl: formData.host.includes('mongodb.net') ? formData.host : `${formData.host}:27017`,
+        databaseName: formData.database,
+        connectionString: buildConnectionUri()
       };
 
       const startTime = Date.now();
