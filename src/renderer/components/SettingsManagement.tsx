@@ -114,7 +114,6 @@ const SettingsManagement: React.FC = () => {
   // App Settings State
   const [appSettings, setAppSettings] = useState({
     autoBackup: true,
-    backupFolder: '',
     backupFrequency: 'daily',
     backupTime: '23:00', // 11:00 PM
     maxBackups: 10,
@@ -253,31 +252,72 @@ const SettingsManagement: React.FC = () => {
     try {
       setIsCreatingBackup(true);
       
-      // Get all data from MongoDB
-      const employees = await databaseService.getAllEmployees();
-      const attendance: any[] = []; // Add attendance data when available
+  // Get all data from MongoDB
+  const employees = await databaseService.getAllEmployees();
+  const attendance = await databaseService.getAllAttendance().catch(() => []);
+  const sales = await databaseService.getAllSales().catch(() => []);
+  const customers = await databaseService.getAllCustomers().catch(() => []);
+  const purchases = await databaseService.getAllPurchases().catch(() => []);
+  const suppliers = await databaseService.getAllSuppliers().catch(() => []);
       
       // Create Excel workbook
       const workbook = XLSX.utils.book_new();
       
       // Add Employees sheet
-      if (employees.length > 0) {
+      if (employees && employees.length > 0) {
         const employeesSheet = XLSX.utils.json_to_sheet(employees);
         XLSX.utils.book_append_sheet(workbook, employeesSheet, 'Employees');
+      } else {
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['No records']]), 'Employees');
       }
-      
-      // Add Attendance sheet (when data is available)
-      if (attendance.length > 0) {
+
+      // Attendance sheet
+      if (attendance && attendance.length > 0) {
         const attendanceSheet = XLSX.utils.json_to_sheet(attendance);
         XLSX.utils.book_append_sheet(workbook, attendanceSheet, 'Attendance');
+      } else {
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['No records']]), 'Attendance');
+      }
+
+      // Sales sheet
+      if (sales && sales.length > 0) {
+        const salesSheet = XLSX.utils.json_to_sheet(sales);
+        XLSX.utils.book_append_sheet(workbook, salesSheet, 'Sales');
+      } else {
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['No records']]), 'Sales');
+      }
+
+      // Customers sheet
+      if (customers && customers.length > 0) {
+        const customersSheet = XLSX.utils.json_to_sheet(customers);
+        XLSX.utils.book_append_sheet(workbook, customersSheet, 'Customers');
+      } else {
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['No records']]), 'Customers');
+      }
+
+      // Purchases sheet
+      if (purchases && purchases.length > 0) {
+        const purchasesSheet = XLSX.utils.json_to_sheet(purchases);
+        XLSX.utils.book_append_sheet(workbook, purchasesSheet, 'Purchases');
+      } else {
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['No records']]), 'Purchases');
+      }
+
+      // Suppliers sheet
+      if (suppliers && suppliers.length > 0) {
+        const suppliersSheet = XLSX.utils.json_to_sheet(suppliers);
+        XLSX.utils.book_append_sheet(workbook, suppliersSheet, 'Suppliers');
+      } else {
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['No records']]), 'Suppliers');
       }
       
       // Add a backup info sheet
+      const totalRecords = (employees?.length || 0) + (attendance?.length || 0) + (sales?.length || 0) + (customers?.length || 0) + (purchases?.length || 0) + (suppliers?.length || 0);
       const backupInfo = [{
         'Backup Date': new Date().toISOString(),
         'Version': '1.0.0',
         'Tables Exported': workbook.SheetNames.join(', '),
-        'Total Records': employees.length + attendance.length
+        'Total Records': totalRecords
       }];
       const infoSheet = XLSX.utils.json_to_sheet(backupInfo);
       XLSX.utils.book_append_sheet(workbook, infoSheet, 'Backup Info');
@@ -431,37 +471,6 @@ const SettingsManagement: React.FC = () => {
     setConfirmDialog({ open: true, title, message, action });
   };
 
-  // Backup folder selection
-  const selectBackupFolder = async () => {
-    try {
-      // In a real Electron app, you would use dialog.showOpenDialog
-      // For now, we'll simulate folder selection
-      const folderPath = await new Promise<string>((resolve) => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.webkitdirectory = true;
-        input.onchange = (e) => {
-          const files = (e.target as HTMLInputElement).files;
-          if (files && files.length > 0) {
-            // Get the directory path from the first file
-            const path = files[0].webkitRelativePath.split('/')[0];
-            resolve(path);
-          }
-        };
-        input.click();
-      });
-
-      if (folderPath) {
-        setAppSettings(prev => ({ ...prev, backupFolder: folderPath }));
-        saveAppSettings({ ...appSettings, backupFolder: folderPath });
-        showSnackbar(`Backup folder set to: ${folderPath}`, 'success');
-      }
-    } catch (error) {
-      console.error('Error selecting backup folder:', error);
-      showSnackbar('Failed to select backup folder', 'error');
-    }
-  };
-
   // Calculate next backup time
   const calculateNextBackupTime = (frequency: string, time: string): Date => {
     const now = new Date();
@@ -491,44 +500,141 @@ const SettingsManagement: React.FC = () => {
   // Perform automatic backup
   const performAutoBackup = async () => {
     try {
-      if (!appSettings.backupFolder) {
-        showSnackbar('No backup folder selected for automatic backup', 'warning');
-        return;
+      setIsCreatingBackup(true);
+      
+      // Get all data from MongoDB (same as manual backup)
+      const employees = await databaseService.getAllEmployees();
+      const attendance = await databaseService.getAllAttendance().catch(() => []);
+      const sales = await databaseService.getAllSales().catch(() => []);
+      const customers = await databaseService.getAllCustomers().catch(() => []);
+      const purchases = await databaseService.getAllPurchases().catch(() => []);
+      const suppliers = await databaseService.getAllSuppliers().catch(() => []);
+      
+      // Create Excel workbook
+      const workbook = XLSX.utils.book_new();
+      
+      // Add all collection sheets (same logic as manual backup)
+      if (employees && employees.length > 0) {
+        const employeesSheet = XLSX.utils.json_to_sheet(employees);
+        XLSX.utils.book_append_sheet(workbook, employeesSheet, 'Employees');
+      } else {
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['No records']]), 'Employees');
       }
 
-      setIsCreatingBackup(true);
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const backupName = `auto_backup_${timestamp}`;
+      if (attendance && attendance.length > 0) {
+        const attendanceSheet = XLSX.utils.json_to_sheet(attendance);
+        XLSX.utils.book_append_sheet(workbook, attendanceSheet, 'Attendance');
+      } else {
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['No records']]), 'Attendance');
+      }
+
+      if (sales && sales.length > 0) {
+        const salesSheet = XLSX.utils.json_to_sheet(sales);
+        XLSX.utils.book_append_sheet(workbook, salesSheet, 'Sales');
+      } else {
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['No records']]), 'Sales');
+      }
+
+      if (customers && customers.length > 0) {
+        const customersSheet = XLSX.utils.json_to_sheet(customers);
+        XLSX.utils.book_append_sheet(workbook, customersSheet, 'Customers');
+      } else {
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['No records']]), 'Customers');
+      }
+
+      if (purchases && purchases.length > 0) {
+        const purchasesSheet = XLSX.utils.json_to_sheet(purchases);
+        XLSX.utils.book_append_sheet(workbook, purchasesSheet, 'Purchases');
+      } else {
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['No records']]), 'Purchases');
+      }
+
+      if (suppliers && suppliers.length > 0) {
+        const suppliersSheet = XLSX.utils.json_to_sheet(suppliers);
+        XLSX.utils.book_append_sheet(workbook, suppliersSheet, 'Suppliers');
+      } else {
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['No records']]), 'Suppliers');
+      }
+
+      // Add backup info sheet
+      const totalRecords = (employees?.length || 0) + (attendance?.length || 0) + (sales?.length || 0) + (customers?.length || 0) + (purchases?.length || 0) + (suppliers?.length || 0);
+      const backupInfo = [{
+        'Backup Date': new Date().toISOString(),
+        'Version': '1.0.0',
+        'Backup Type': 'Automatic',
+        'Frequency': appSettings.backupFrequency,
+        'Tables Exported': workbook.SheetNames.join(', '),
+        'Total Records': totalRecords
+      }];
+      const infoSheet = XLSX.utils.json_to_sheet(backupInfo);
+      XLSX.utils.book_append_sheet(workbook, infoSheet, 'Backup Info');
       
-      // Simulate backup creation (in real app, this would export all data)
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Generate Excel file buffer
+      const excelBuffer = XLSX.write(workbook, { 
+        bookType: 'xlsx', 
+        type: 'array',
+        compression: true 
+      });
       
-      // Update last backup time
-      const now = new Date().toLocaleString();
-      setLastAutoBackup(now);
-      localStorage.setItem('lastAutoBackup', now);
+      // Calculate file size
+      const sizeInBytes = excelBuffer.byteLength;
+      const sizeInMB = (sizeInBytes / (1024 * 1024)).toFixed(2);
       
-      // Schedule next backup
-      scheduleNextBackup();
+      // Generate filename with timestamp
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
+      const timeStr = new Date().toISOString().split('T')[1].replace(/[:.]/g, '-').substring(0, 8);
+      const filename = `BusinessDashboard_AutoBackup_${timestamp}_${timeStr}.xlsx`;
       
-      if (appSettings.showNotifications) {
-        showSnackbar(`Automatic backup "${backupName}" created successfully`, 'success');
+      // Save file to Documents/Business Dashboard/Autobackup using Electron API
+      if (window.electronAPI && window.electronAPI.saveFile) {
+        const autobackupPath = 'Documents/Business Dashboard/Autobackup';
+        const fullPath = `${autobackupPath}/${filename}`;
+        
+        // Convert ArrayBuffer to Uint8Array for Electron API
+        const uint8Array = new Uint8Array(excelBuffer);
+        
+        const result = await window.electronAPI.saveFile(fullPath, uint8Array as any);
+        
+        if (result.success) {
+          // Update last backup time
+          const now = new Date().toLocaleString();
+          setLastAutoBackup(now);
+          localStorage.setItem('lastAutoBackup', now);
+          
+          // Add to backup history
+          const newBackup: BackupInfo = {
+            id: Date.now().toString(),
+            name: `Auto Backup - ${new Date().toLocaleDateString()}`,
+            date: now,
+            size: `${sizeInMB} MB`,
+            collections: workbook.SheetNames.length,
+            filePath: result.filePath
+          };
+          
+          const updatedHistory = [newBackup, ...backupHistory.slice(0, appSettings.maxBackups - 1)];
+          setBackupHistory(updatedHistory);
+          localStorage.setItem('backup-history', JSON.stringify(updatedHistory));
+          
+          // Schedule next backup
+          scheduleNextBackup();
+          
+          if (appSettings.showNotifications) {
+            showSnackbar(`Automatic backup saved to: ${result.filePath}`, 'success');
+          }
+        } else {
+          const errorMessage = result.error || 'Failed to save auto backup file';
+          showSnackbar(errorMessage, 'error');
+          return;
+        }
+      } else {
+        showSnackbar('File system API not available for automatic backup', 'error');
+        return;
       }
       
-      // Update backup history
-      const newBackup: BackupInfo = {
-        id: Date.now().toString(),
-        name: backupName,
-        date: now,
-        size: '2.8 MB',
-        collections: 5
-      };
-      setBackupHistory(prev => [newBackup, ...prev.slice(0, appSettings.maxBackups - 1)]);
-      
-    } catch (error) {
+    } catch (error: any) {
       console.error('Auto backup failed:', error);
       if (appSettings.showNotifications) {
-        showSnackbar('Automatic backup failed', 'error');
+        showSnackbar(`Automatic backup failed: ${error?.message || 'Unknown error'}`, 'error');
       }
     } finally {
       setIsCreatingBackup(false);
@@ -882,28 +988,10 @@ const SettingsManagement: React.FC = () => {
           </Typography>
           
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 2 }}>
-            {/* Backup Folder Selection */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <TextField
-                fullWidth
-                label="Backup Folder"
-                value={appSettings.backupFolder || 'No folder selected'}
-                variant="outlined"
-                disabled
-                helperText="Select a folder where automatic backups will be stored"
-                InputProps={{
-                  startAdornment: <FolderOpen sx={{ mr: 1, color: 'text.secondary' }} />
-                }}
-              />
-              <Button
-                variant="outlined"
-                onClick={selectBackupFolder}
-                startIcon={<FolderOpen />}
-                sx={{ minWidth: 'fit-content', whiteSpace: 'nowrap' }}
-              >
-                Select Folder
-              </Button>
-            </Box>
+            {/* Auto Backup Info */}
+            <Alert severity="info">
+              Automatic backups are saved to: <strong>Documents/Business Dashboard/Autobackup</strong>
+            </Alert>
 
             {/* Settings Row 1 */}
             <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
@@ -913,17 +1001,14 @@ const SettingsManagement: React.FC = () => {
                     <Switch
                       checked={appSettings.autoBackup}
                       onChange={(e) => updateAppSettings({ autoBackup: e.target.checked })}
-                      disabled={!appSettings.backupFolder}
                     />
                   }
                   label="Enable Automatic Backup"
                 />
                 <FormHelperText>
-                  {!appSettings.backupFolder 
-                    ? 'Select a backup folder first' 
-                    : appSettings.autoBackup 
-                      ? 'Automatic backups are enabled' 
-                      : 'Automatic backups are disabled'
+                  {appSettings.autoBackup 
+                    ? 'Automatic backups are enabled' 
+                    : 'Automatic backups are disabled'
                   }
                 </FormHelperText>
               </Box>
@@ -978,7 +1063,7 @@ const SettingsManagement: React.FC = () => {
           </Box>
 
           {/* Backup Status */}
-          {appSettings.autoBackup && appSettings.backupFolder && (
+          {appSettings.autoBackup && (
             <Alert severity="info" sx={{ mt: 3 }}>
               <Typography variant="body2">
                 <strong>Backup Status:</strong><br/>
