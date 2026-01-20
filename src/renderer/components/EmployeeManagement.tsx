@@ -43,6 +43,7 @@ import {
 } from '@mui/icons-material';
 import { Employee } from '../types/Employee';
 import databaseService from '../services/DatabaseService';
+import { validateEmployee } from '../utils/validation';
 
 interface EmployeeManagementProps {
   // Props can be added here if needed
@@ -95,38 +96,7 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = () => {
   };
 
   const validateForm = (): boolean => {
-    const errors: Record<string, string> = {};
-    
-    if (!formData.emp_id?.trim()) {
-      errors.emp_id = 'Employee ID is required';
-    }
-    
-    if (!formData.name?.trim()) {
-      errors.name = 'Name is required';
-    }
-    
-    if (!formData.department?.trim()) {
-      errors.department = 'Department is required';
-    }
-    
-    if (!formData.position?.trim()) {
-      errors.position = 'Position is required';
-    }
-    
-    if (!formData.email?.trim()) {
-      errors.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      errors.email = 'Invalid email format';
-    }
-    
-    if (!formData.phone?.trim()) {
-      errors.phone = 'Phone is required';
-    }
-    
-    if (formData.salary !== undefined && formData.salary <= 0) {
-      errors.salary = 'Salary must be greater than 0';
-    }
-
+    const errors = validateEmployee(formData);
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };

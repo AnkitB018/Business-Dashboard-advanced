@@ -35,10 +35,10 @@ const createWindow = (): void => {
 
   // Load the app
   if (process.env.NODE_ENV === 'development') {
-    mainWindow.loadFile('dist/index.html');
+    mainWindow.loadFile(path.join(__dirname, 'index.html'));
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile('dist/index.html');
+    mainWindow.loadFile(path.join(__dirname, 'index.html'));
   }
 
   // Show window when ready to prevent visual flash

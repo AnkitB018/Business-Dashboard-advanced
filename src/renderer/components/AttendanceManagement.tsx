@@ -44,6 +44,7 @@ import {
 import { Attendance, AttendanceFormData } from '../types/Attendance';
 import { Employee } from '../types/Employee';
 import databaseService from '../services/DatabaseService';
+import { validateAttendance } from '../utils/validation';
 
 const AttendanceManagement: React.FC = () => {
   const [attendanceRecords, setAttendanceRecords] = useState<Attendance[]>([]);
@@ -129,25 +130,7 @@ const AttendanceManagement: React.FC = () => {
   };
 
   const validateForm = (): boolean => {
-    const errors: Record<string, string> = {};
-
-    if (!formData.employee_id) {
-      errors.employee_id = 'Employee is required';
-    }
-
-    if (!formData.check_in_time) {
-      errors.check_in_time = 'Check-in time is required';
-    }
-
-    if (formData.check_out_time && formData.check_in_time) {
-      const checkIn = new Date(`${formData.date}T${formData.check_in_time}`);
-      const checkOut = new Date(`${formData.date}T${formData.check_out_time}`);
-      
-      if (checkOut <= checkIn) {
-        errors.check_out_time = 'Check-out time must be after check-in time';
-      }
-    }
-
+    const errors = validateAttendance(formData);
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };

@@ -1,4 +1,6 @@
 // Purchase data model matching Python Purchase class
+import { FormValidator } from '../utils/validation';
+
 export interface Purchase {
   _id?: string;
   purchase_id: string;
@@ -128,35 +130,26 @@ export class PurchaseModel implements Purchase {
 
   // Validation
   validate(): { isValid: boolean; errors: string[] } {
-    const errors: string[] = [];
-
-    if (!this.item_name.trim()) {
-      errors.push('Item name is required');
-    }
-
-    if (this.quantity <= 0) {
-      errors.push('Quantity must be greater than 0');
-    }
-
-    if (this.unit_price <= 0) {
-      errors.push('Unit price must be greater than 0');
-    }
-
-    if (!this.supplier_name.trim()) {
-      errors.push('Supplier name is required');
-    }
-
+    const validator = new FormValidator();
+    
+    validator
+      .required(this.item_name, 'item_name', 'Item name is required')
+      .required(this.supplier_name, 'supplier_name', 'Supplier name is required')
+      .min(this.quantity, 1, 'quantity', 'Quantity must be greater than 0')
+      .min(this.unit_price, 0.01, 'unit_price', 'Unit price must be greater than 0');
+    
     if (this.paid_amount && this.paid_amount < 0) {
-      errors.push('Paid amount cannot be negative');
+      validator.custom(true, 'paid_amount', 'Paid amount cannot be negative');
     }
 
     if (this.paid_amount && this.paid_amount > this.total_price) {
-      errors.push('Paid amount cannot exceed total price');
+      validator.custom(true, 'paid_amount', 'Paid amount cannot exceed total price');
     }
 
+    const validationErrors = validator.getErrors();
     return {
-      isValid: errors.length === 0,
-      errors
+      isValid: Object.keys(validationErrors).length === 0,
+      errors: Object.values(validationErrors)
     };
   }
 }
@@ -227,33 +220,21 @@ export class SupplierModel implements Supplier {
 
   // Validation
   validate(): { isValid: boolean; errors: string[] } {
-    const errors: string[] = [];
-
-    if (!this.name.trim()) {
-      errors.push('Supplier name is required');
-    }
-
-    if (!this.contact_number.trim()) {
-      errors.push('Contact number is required');
-    }
-
-    // Basic phone number validation
-    const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
-    if (this.contact_number && !phoneRegex.test(this.contact_number.replace(/[\s\-\(\)]/g, ''))) {
-      errors.push('Invalid contact number format');
-    }
-
-    // Basic email validation if provided
+    const validator = new FormValidator();
+    
+    validator
+      .required(this.name, 'name', 'Supplier name is required')
+      .required(this.contact_number, 'contact_number', 'Contact number is required')
+      .phone(this.contact_number, 'contact_number');
+    
     if (this.email) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(this.email)) {
-        errors.push('Invalid email format');
-      }
+      validator.email(this.email, 'email');
     }
 
+    const validationErrors = validator.getErrors();
     return {
-      isValid: errors.length === 0,
-      errors
+      isValid: Object.keys(validationErrors).length === 0,
+      errors: Object.values(validationErrors)
     };
   }
 }

@@ -8,7 +8,7 @@
     "build:dev": "webpack --mode development",
     "build:main": "tsc -p tsconfig.main.json",
     "start": "concurrently \"npm run build:dev\" \"npm run build:main\" \"wait-on dist/main.js && electron .\"",
-    "dev": "concurrently \"webpack serve --mode development\" \"npm run build:main\" \"wait-on dist/main.js && electron .\"",
+    "dev": "concurrently \"webpack --mode development --watch\" \"wait-on dist/main.js dist/index.html && electron .\"",
     "dist": "npm run build && npm run build:main && electron-builder",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

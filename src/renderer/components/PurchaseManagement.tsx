@@ -51,6 +51,7 @@ import {
 import { Purchase, PurchaseFormData, Supplier } from '../types/Purchase';
 import { formatCurrency, formatNumber, generateIndianBusinessData } from '../utils/formatters';
 import databaseService from '../services/DatabaseService';
+import { validatePurchase } from '../utils/validation';
 
 const PurchaseManagement: React.FC = () => {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
@@ -187,28 +188,7 @@ const PurchaseManagement: React.FC = () => {
   };
 
   const validateForm = (): boolean => {
-    const errors: Record<string, string> = {};
-
-    if (!formData.item_name.trim()) {
-      errors.item_name = 'Item name is required';
-    }
-
-    if (!formData.supplier_name.trim()) {
-      errors.supplier_name = 'Supplier name is required';
-    }
-
-    if (formData.quantity <= 0) {
-      errors.quantity = 'Quantity must be greater than 0';
-    }
-
-    if (formData.unit_price <= 0) {
-      errors.unit_price = 'Unit price must be greater than 0';
-    }
-
-    if (formData.paid_amount && formData.paid_amount > calculateTotalPrice()) {
-      errors.paid_amount = 'Paid amount cannot exceed total price';
-    }
-
+    const errors = validatePurchase(formData, calculateTotalPrice());
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };

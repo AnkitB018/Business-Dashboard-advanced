@@ -30,6 +30,7 @@ import {
   Info
 } from '@mui/icons-material';
 import { DatabaseConfig, ConnectionStatus } from '../types/Common';
+import { validateDatabaseConfig } from '../utils/validation';
 
 interface DatabaseSetupDialogProps {
   open: boolean;
@@ -76,26 +77,7 @@ const DatabaseSetupDialog: React.FC<DatabaseSetupDialogProps> = ({
   ];
 
   const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.host.trim()) {
-      newErrors.host = 'Host is required';
-    } else if (!formData.host.includes('mongodb.net') && !formData.host.includes('localhost')) {
-      newErrors.host = 'Please enter a valid MongoDB Atlas host or localhost';
-    }
-
-    if (!formData.database.trim()) {
-      newErrors.database = 'Database name is required';
-    }
-
-    if (!formData.username.trim()) {
-      newErrors.username = 'Username is required';
-    }
-
-    if (!formData.password.trim()) {
-      newErrors.password = 'Password is required';
-    }
-
+    const newErrors = validateDatabaseConfig(formData);
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };

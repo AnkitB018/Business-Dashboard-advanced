@@ -50,6 +50,7 @@ import { Sale, SalesItem, Product, SalesFormData } from '../types/Sales';
 import { Customer } from '../types/Customer';
 import { formatCurrency, formatNumber, generateIndianBusinessData, convertToIndianPrice } from '../utils/formatters';
 import databaseService from '../services/DatabaseService';
+import { validateSale } from '../utils/validation';
 
 const SalesManagement: React.FC = () => {
   const [sales, setSales] = useState<Sale[]>([]);
@@ -308,16 +309,7 @@ const SalesManagement: React.FC = () => {
   };
 
   const validateForm = (): boolean => {
-    const errors: Record<string, string> = {};
-
-    if (!formData.customerId) {
-      errors.customerId = 'Customer is required';
-    }
-
-    if (cart.length === 0) {
-      errors.cart = 'At least one item is required';
-    }
-
+    const errors = validateSale(formData, cart);
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };

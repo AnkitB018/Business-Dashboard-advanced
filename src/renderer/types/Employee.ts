@@ -1,4 +1,6 @@
 ﻿// Employee data model matching Python Employee class
+import { FormValidator } from '../utils/validation';
+
 export interface Employee {
   _id?: string;
   emp_id: string;
@@ -65,23 +67,20 @@ export class EmployeeModel implements Employee {
 
   // Validation
   validate(): { isValid: boolean; errors: string[] } {
-    const errors: string[] = [];
+    const validator = new FormValidator();
+    
+    validator
+      .required(this.emp_id, 'emp_id', 'Employee ID is required')
+      .required(this.name, 'name', 'Name is required')
+      .required(this.position, 'position', 'Position is required')
+      .required(this.department, 'department', 'Department is required')
+      .email(this.email, 'email')
+      .min(this.salary, 0, 'salary', 'Salary cannot be negative');
 
-    if (!this.emp_id.trim()) errors.push('Employee ID is required');
-    if (!this.name.trim()) errors.push('Name is required');
-    if (!this.position.trim()) errors.push('Position is required');
-    if (!this.department.trim()) errors.push('Department is required');
-    if (this.email && !this.isValidEmail(this.email)) errors.push('Invalid email format');
-    if (this.salary < 0) errors.push('Salary cannot be negative');
-
+    const validationErrors = validator.getErrors();
     return {
-      isValid: errors.length === 0,
-      errors
+      isValid: Object.keys(validationErrors).length === 0,
+      errors: Object.values(validationErrors)
     };
-  }
-
-  private isValidEmail(email: string): boolean {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
   }
 }
