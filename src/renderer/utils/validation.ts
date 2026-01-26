@@ -287,10 +287,7 @@ export const validateEmployee = (data: any): ValidationErrors => {
   validator
     .required(data.emp_id, 'emp_id', 'Employee ID is required')
     .required(data.name, 'name', 'Name is required')
-    .required(data.department, 'department', 'Department is required')
     .required(data.position, 'position', 'Position is required')
-    .required(data.email, 'email', 'Email is required')
-    .email(data.email, 'email')
     .required(data.phone, 'phone', 'Phone is required')
     .phone(data.phone, 'phone');
   
@@ -373,6 +370,55 @@ export const validateDatabaseConfig = (data: any): ValidationErrors => {
     validator.custom(true, 'host', 'Please enter a valid MongoDB Atlas host or localhost');
   }
   
+  return validator.getErrors();
+};
+
+/**
+ * Salary change validators
+ */
+export const validateSalaryChange = (data: any, currentSalary: number): ValidationErrors => {
+  const validator = new FormValidator();
+  
+  validator
+    .required(data.new_salary, 'new_salary', 'New salary is required')
+    .min(data.new_salary, 0.01, 'new_salary', 'New salary must be greater than 0')
+    .required(data.reason, 'reason', 'Reason for salary change is required')
+    .required(data.approved_by, 'approved_by', 'Approver name is required');
+
+  // Warn if salary is decreasing
+  if (data.new_salary && currentSalary && data.new_salary < currentSalary) {
+    validator.custom(
+      !data.reason || data.reason.trim().length < 10,
+      'reason',
+      'Salary decrease requires detailed explanation (min 10 characters)'
+    );
+  }
+
+  return validator.getErrors();
+};
+
+/**
+ * Employment status change validators
+ */
+export const validateEmploymentStatusChange = (data: any): ValidationErrors => {
+  const validator = new FormValidator();
+  
+  validator
+    .required(data.new_status, 'new_status', 'New status is required')
+    .required(data.event_date, 'event_date', 'Event date is required')
+    .required(data.effective_date, 'effective_date', 'Effective date is required')
+    .required(data.processed_by, 'processed_by', 'Processor name is required');
+
+  // Require reason for resignations, terminations, and retirements
+  if (['resigned', 'terminated', 'retired'].includes(data.new_status)) {
+    validator.required(data.reason, 'reason', 'Reason is required for this status change');
+  }
+
+  // For resignations and terminations, require last working day
+  if (['resigned', 'terminated'].includes(data.new_status)) {
+    validator.required(data.last_working_day, 'last_working_day', 'Last working day is required');
+  }
+
   return validator.getErrors();
 };
 

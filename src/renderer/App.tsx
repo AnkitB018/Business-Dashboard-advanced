@@ -344,11 +344,29 @@ const DashboardPage = ({ onNavigate }: { onNavigate: (page: string) => void }) =
       const employees = await databaseService.getAllEmployees();
       const activeEmployees = employees.filter((emp: any) => emp.status === 'active');
       
+      // Load today's attendance
+      const today = new Date().toISOString().split('T')[0];
+      const allAttendance = await databaseService.getAllAttendance();
+      const todaysAttendance = allAttendance.filter((att: any) => {
+        const attDate = new Date(att.date).toISOString().split('T')[0];
+        return attDate === today && att.status === 'Present';
+      });
+      
+      // Load monthly sales
+      const allSales = await databaseService.getAllSales();
+      const currentMonth = new Date().getMonth();
+      const currentYear = new Date().getFullYear();
+      const monthlySalesData = allSales.filter((sale: any) => {
+        const saleDate = new Date(sale.saleDate || sale.date);
+        return saleDate.getMonth() === currentMonth && saleDate.getFullYear() === currentYear;
+      });
+      const totalMonthlySales = monthlySalesData.reduce((sum: number, sale: any) => sum + (sale.totalAmount || 0), 0);
+      
       setStats({
         totalEmployees: employees.length,
         activeEmployees: activeEmployees.length,
-        todayAttendance: Math.floor(activeEmployees.length * 0.85), // Mock attendance
-        monthlySales: 45000 // Mock sales data
+        todayAttendance: todaysAttendance.length,
+        monthlySales: totalMonthlySales
       });
     } catch (error) {
       console.error('Error loading dashboard data:', error);

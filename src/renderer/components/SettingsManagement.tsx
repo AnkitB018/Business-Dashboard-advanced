@@ -434,10 +434,12 @@ const SettingsManagement: React.FC = () => {
     try {
       setIsRestoringBackup(true);
       
-      // Mock restore process - implement actual restore logic
+      // NOTE: Actual restore would require IPC call to main process
+      // window.electron.ipcRenderer.invoke('restore-backup', backupId);
+      // For now, showing success message. Implement IPC handler in main process.
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      showSnackbar('Backup restored successfully', 'success');
+      showSnackbar('Backup restore initiated - implement IPC handler', 'success');
       setConfirmDialog({ open: false, title: '', message: '', action: () => {} });
     } catch (error) {
       console.error('Error restoring backup:', error);

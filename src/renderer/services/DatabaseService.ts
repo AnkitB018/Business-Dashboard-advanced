@@ -1,6 +1,8 @@
 import { Employee } from '../types/Employee';
 import { Attendance } from '../types/Attendance';
 import { DatabaseConfig } from '../types/Common';
+import { SalaryHistory } from '../types/SalaryHistory';
+import { EmploymentHistory } from '../types/EmploymentHistory';
 
 // Simplified interface for UI compatibility
 interface AttendanceRecord {
@@ -707,6 +709,315 @@ class DatabaseService {
       console.error('Error seeding sample data:', error);
       throw error;
     }
+  }
+
+  // ==================== SALARY HISTORY OPERATIONS ====================
+  
+  async getSalaryHistory(employeeId: string): Promise<SalaryHistory[]> {
+    if (!this.isConnected) throw new Error('Database not connected');
+    
+    const result = await window.electronAPI.dbOperation('find', 'salary_history', { 
+      query: { employee_id: employeeId } 
+    });
+    if (result.success) {
+      // Sort by effective_date descending (newest first)
+      const history = result.data || [];
+      return history.sort((a: any, b: any) => 
+        new Date(b.effective_date).getTime() - new Date(a.effective_date).getTime()
+      );
+    }
+    throw new Error(result.message || 'Failed to fetch salary history');
+  }
+
+  async getAllSalaryHistory(): Promise<SalaryHistory[]> {
+    if (!this.isConnected) throw new Error('Database not connected');
+    
+    const result = await window.electronAPI.dbOperation('find', 'salary_history');
+    if (result.success) {
+      const history = result.data || [];
+      return history.sort((a: any, b: any) => 
+        new Date(b.effective_date).getTime() - new Date(a.effective_date).getTime()
+      );
+    }
+    throw new Error(result.message || 'Failed to fetch salary history');
+  }
+
+  async addSalaryHistory(salaryHistory: Omit<SalaryHistory, '_id'>): Promise<SalaryHistory> {
+    if (!this.isConnected) throw new Error('Database not connected');
+    
+    const newSalaryHistory = {
+      ...salaryHistory,
+      _id: new Date().getTime().toString(),
+      created_date: new Date()
+    };
+
+    const result = await window.electronAPI.dbOperation('insertOne', 'salary_history', newSalaryHistory);
+    if (result.success) {
+      return newSalaryHistory as SalaryHistory;
+    }
+    throw new Error(result.message || 'Failed to add salary history');
+  }
+
+  async changeSalary(
+    employeeId: string, 
+    newSalary: number, 
+    effectiveDate: Date,
+    reason: string,
+    approvedBy: string,
+    notes?: string
+  ): Promise<{ success: boolean; salaryHistory: SalaryHistory; updatedEmployee: Employee }> {
+    if (!this.isConnected) throw new Error('Database not connected');
+    
+    try {
+      // Get current employee data
+      const employee = await this.getEmployeeById(employeeId);
+      if (!employee) {
+        throw new Error('Employee not found');
+      }
+
+      const currentSalary = employee.current_salary || employee.salary || 0;
+
+      // Calculate changes
+      const changeAmount = newSalary - currentSalary;
+      const changePercentage = currentSalary > 0 ? ((changeAmount / currentSalary) * 100) : 0;
+
+      // Create salary history entry
+      const salaryHistory: Omit<SalaryHistory, '_id'> = {
+        employee_id: employeeId,
+        emp_id: employee.emp_id,
+        employee_name: employee.name,
+        previous_salary: currentSalary,
+        new_salary: newSalary,
+        change_amount: changeAmount,
+        change_percentage: changePercentage,
+        effective_date: effectiveDate,
+        reason,
+        approved_by: approvedBy,
+        notes,
+        created_date: new Date()
+      };
+
+      // Add salary history record
+      const savedHistory = await this.addSalaryHistory(salaryHistory);
+
+      // Update employee's current salary and last review date
+      const updatedEmployee = await this.updateEmployee(employeeId, {
+        current_salary: newSalary,
+        salary: newSalary, // For backward compatibility
+        last_salary_review_date: effectiveDate,
+        last_modified: new Date()
+      });
+
+      return {
+        success: true,
+        salaryHistory: savedHistory,
+        updatedEmployee
+      };
+    } catch (error) {
+      console.error('Error changing salary:', error);
+      throw error;
+    }
+  }
+
+  // ==================== EMPLOYMENT HISTORY OPERATIONS ====================
+  
+  async getEmploymentHistory(employeeId: string): Promise<EmploymentHistory[]> {
+    if (!this.isConnected) throw new Error('Database not connected');
+    
+    const result = await window.electronAPI.dbOperation('find', 'employment_history', { 
+      query: { employee_id: employeeId } 
+    });
+    if (result.success) {
+      // Sort by event_date descending (newest first)
+      const history = result.data || [];
+      return history.sort((a: any, b: any) => 
+        new Date(b.event_date).getTime() - new Date(a.event_date).getTime()
+      );
+    }
+    throw new Error(result.message || 'Failed to fetch employment history');
+  }
+
+  async getAllEmploymentHistory(): Promise<EmploymentHistory[]> {
+    if (!this.isConnected) throw new Error('Database not connected');
+    
+    const result = await window.electronAPI.dbOperation('find', 'employment_history');
+    if (result.success) {
+      const history = result.data || [];
+      return history.sort((a: any, b: any) => 
+        new Date(b.event_date).getTime() - new Date(a.event_date).getTime()
+      );
+    }
+    throw new Error(result.message || 'Failed to fetch employment history');
+  }
+
+  async addEmploymentHistory(employmentHistory: Omit<EmploymentHistory, '_id'>): Promise<EmploymentHistory> {
+    if (!this.isConnected) throw new Error('Database not connected');
+    
+    const newEmploymentHistory = {
+      ...employmentHistory,
+      _id: new Date().getTime().toString(),
+      created_date: new Date()
+    };
+
+    const result = await window.electronAPI.dbOperation('insertOne', 'employment_history', newEmploymentHistory);
+    if (result.success) {
+      return newEmploymentHistory as EmploymentHistory;
+    }
+    throw new Error(result.message || 'Failed to add employment history');
+  }
+
+  async changeEmploymentStatus(
+    employeeId: string,
+    newStatus: 'active' | 'resigned' | 'terminated' | 'retired' | 'on_leave',
+    eventDate: Date,
+    effectiveDate: Date,
+    reason: string,
+    processedBy: string,
+    lastWorkingDay?: Date,
+    noticePeriodServed?: boolean,
+    exitInterviewNotes?: string,
+    notes?: string
+  ): Promise<{ success: boolean; employmentHistory: EmploymentHistory; updatedEmployee: Employee }> {
+    if (!this.isConnected) throw new Error('Database not connected');
+    
+    try {
+      // Get current employee data
+      const employee = await this.getEmployeeById(employeeId);
+      if (!employee) {
+        throw new Error('Employee not found');
+      }
+
+      const previousStatus = employee.employment_status || (employee.is_active ? 'active' : 'inactive');
+      
+      // Determine event type based on new status
+      let eventType: 'hired' | 'resigned' | 'terminated' | 'retired' | 'status_change' = 'status_change';
+      if (newStatus === 'resigned') eventType = 'resigned';
+      else if (newStatus === 'terminated') eventType = 'terminated';
+      else if (newStatus === 'retired') eventType = 'retired';
+
+      // Create employment history entry
+      const employmentHistory: Omit<EmploymentHistory, '_id'> = {
+        employee_id: employeeId,
+        emp_id: employee.emp_id,
+        employee_name: employee.name,
+        event_type: eventType,
+        previous_status: previousStatus,
+        new_status: newStatus,
+        event_date: eventDate,
+        effective_date: effectiveDate,
+        reason,
+        last_working_day: lastWorkingDay,
+        notice_period_served: noticePeriodServed,
+        exit_interview_notes: exitInterviewNotes,
+        notes,
+        processed_by: processedBy,
+        created_date: new Date()
+      };
+
+      // Add employment history record
+      const savedHistory = await this.addEmploymentHistory(employmentHistory);
+
+      // Update employee's status
+      const updateData: Partial<Employee> = {
+        employment_status: newStatus,
+        is_active: newStatus === 'active', // For backward compatibility
+        last_modified: new Date()
+      };
+
+      // If employee is leaving, set termination details
+      if (newStatus !== 'active') {
+        updateData.termination_date = lastWorkingDay || effectiveDate;
+        updateData.termination_reason = reason;
+      }
+
+      const updatedEmployee = await this.updateEmployee(employeeId, updateData);
+
+      return {
+        success: true,
+        employmentHistory: savedHistory,
+        updatedEmployee
+      };
+    } catch (error) {
+      console.error('Error changing employment status:', error);
+      throw error;
+    }
+  }
+
+  // Helper method to get employees needing salary review (> 12 months since last review)
+  async getEmployeesNeedingSalaryReview(): Promise<Employee[]> {
+    if (!this.isConnected) throw new Error('Database not connected');
+    
+    const employees = await this.getAllEmployees();
+    const twelveMonthsAgo = new Date();
+    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+
+    return employees.filter(emp => {
+      // Only active employees need reviews
+      if (emp.employment_status !== 'active' && !emp.is_active) return false;
+      
+      // If never reviewed, or last review was > 12 months ago
+      if (!emp.last_salary_review_date) return true;
+      
+      const lastReview = new Date(emp.last_salary_review_date);
+      return lastReview < twelveMonthsAgo;
+    });
+  }
+
+  // Helper method to get attrition statistics
+  async getAttritionStats(startDate?: Date, endDate?: Date): Promise<{
+    total: number;
+    resigned: number;
+    terminated: number;
+    retired: number;
+    averageTenure: number;
+  }> {
+    if (!this.isConnected) throw new Error('Database not connected');
+    
+    const allHistory = await this.getAllEmploymentHistory();
+    
+    // Filter by date range if provided
+    let filteredHistory = allHistory;
+    if (startDate || endDate) {
+      filteredHistory = allHistory.filter(record => {
+        const eventDate = new Date(record.event_date);
+        if (startDate && eventDate < startDate) return false;
+        if (endDate && eventDate > endDate) return false;
+        return true;
+      });
+    }
+
+    // Count by type
+    const resigned = filteredHistory.filter(r => r.event_type === 'resigned').length;
+    const terminated = filteredHistory.filter(r => r.event_type === 'terminated').length;
+    const retired = filteredHistory.filter(r => r.event_type === 'retired').length;
+
+    // Calculate average tenure for departed employees
+    let totalTenure = 0;
+    let count = 0;
+    
+    for (const record of filteredHistory) {
+      if (record.event_type !== 'hired') {
+        // Get employee to calculate tenure
+        try {
+          const emp = await this.getEmployeeById(record.employee_id);
+          if (emp && emp.hire_date) {
+            const tenure = (new Date(record.event_date).getTime() - new Date(emp.hire_date).getTime()) / (1000 * 60 * 60 * 24 * 365);
+            totalTenure += tenure;
+            count++;
+          }
+        } catch (error) {
+          console.warn('Could not calculate tenure for employee:', record.employee_id);
+        }
+      }
+    }
+
+    return {
+      total: resigned + terminated + retired,
+      resigned,
+      terminated,
+      retired,
+      averageTenure: count > 0 ? totalTenure / count : 0
+    };
   }
 }
 

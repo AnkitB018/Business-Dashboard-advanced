@@ -2,7 +2,7 @@
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
-import { MongoClient, Db } from 'mongodb';
+import { MongoClient, Db, ObjectId } from 'mongodb';
 
 // Keep a global reference of the window object
 let mainWindow: BrowserWindow;
@@ -95,28 +95,52 @@ ipcMain.handle('db-operation', async (event, operation: string, collection: stri
     return { success: false, message: 'Database not connected' };
   }
 
+  // Helper function to convert _id to ObjectId if needed
+  const convertId = (obj: any) => {
+    if (!obj) return obj;
+    if (obj._id) {
+      try {
+        const idValue = obj._id;
+        // Try to convert to ObjectId if it's a valid 24-char hex string
+        if (typeof idValue === 'string' && /^[0-9a-fA-F]{24}$/.test(idValue)) {
+          obj._id = new ObjectId(idValue);
+          console.log('Converted string ID to ObjectId:', idValue);
+        } else if (typeof idValue === 'object' && idValue.$oid) {
+          obj._id = new ObjectId(idValue.$oid);
+          console.log('Converted $oid to ObjectId:', idValue.$oid);
+        } else {
+          console.log('Keeping ID as-is:', typeof idValue, idValue);
+        }
+      } catch (e) {
+        console.log('ID conversion failed, keeping as-is:', e);
+      }
+    }
+    return obj;
+  };
+
   try {
     let result;
     const coll = database.collection(collection);
 
     switch (operation) {
       case 'find':
-        result = await coll.find(data?.query || {}).toArray();
+        result = await coll.find(convertId(data?.query) || {}).toArray();
         break;
       case 'findOne':
-        result = await coll.findOne(data?.query || {});
+        result = await coll.findOne(convertId(data?.query) || {});
         break;
       case 'insertOne':
-        result = await coll.insertOne(data);
+        // Bypass document validation to allow optional fields
+        result = await coll.insertOne(data, { bypassDocumentValidation: true });
         break;
       case 'updateOne':
-        result = await coll.updateOne(data.filter, { $set: data.update });
+        result = await coll.updateOne(convertId(data.filter), { $set: data.update }, { bypassDocumentValidation: true });
         break;
       case 'deleteOne':
-        result = await coll.deleteOne(data);
+        result = await coll.deleteOne(convertId(data));
         break;
       case 'count':
-        result = await coll.countDocuments(data?.query || {});
+        result = await coll.countDocuments(convertId(data?.query) || {});
         break;
       default:
         throw new Error(`Unknown operation: ${operation}`);
