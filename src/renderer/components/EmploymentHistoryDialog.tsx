@@ -130,7 +130,7 @@ const EmploymentHistoryDialog: React.FC<EmploymentHistoryDialogProps> = ({
             <Box>
               <Typography variant="h6">Employment History</Typography>
               <Typography variant="body2" color="text.secondary">
-                {employee.name} ({employee.emp_id})
+                {employee.name} ({employee.employee_id})
               </Typography>
             </Box>
           </Box>

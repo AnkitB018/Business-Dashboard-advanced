@@ -206,7 +206,7 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = () => {
 
   const handleOpenAddDialog = () => {
     setFormData({
-      emp_id: '',
+      employee_id: '',
       name: '',
       position: '',
       phone: '',
@@ -251,7 +251,7 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = () => {
   const filteredEmployees = employees.filter(employee => {
     const matchesSearch = !searchTerm || 
       employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.emp_id.toLowerCase().includes(searchTerm.toLowerCase());
+      employee.employee_id.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesPosition = !positionFilter || employee.position === positionFilter;
     const matchesStatus = statusFilter === 'all' || employee.employment_status === statusFilter;
@@ -401,11 +401,11 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = () => {
                 // Handle ObjectId properly - convert to string
                 const employeeKey = employeeData._id ? 
                   (typeof employeeData._id === 'object' ? JSON.stringify(employeeData._id) : employeeData._id.toString()) 
-                  : (employeeData.emp_id || `employee-${index}`);
+                  : (employeeData.employee_id || `employee-${index}`);
                 
                 return (
                 <TableRow key={employeeKey} hover>
-                  <TableCell>{employeeData.employee_id || employeeData.emp_id || 'N/A'}</TableCell>
+                  <TableCell>{employeeData.employee_id || 'N/A'}</TableCell>
                   <TableCell>{employeeData.name || 'N/A'}</TableCell>
                   <TableCell>{employeeData.position || 'N/A'}</TableCell>
                   <TableCell>{employeeData.phone || 'N/A'}</TableCell>
@@ -514,10 +514,10 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = () => {
             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 2 }}>
               <TextField
                 label="Employee ID"
-                value={formData.emp_id || ''}
-                onChange={handleFormChange('emp_id')}
-                error={!!formErrors.emp_id}
-                helperText={formErrors.emp_id}
+                value={formData.employee_id || ''}
+                onChange={handleFormChange('employee_id')}
+                error={!!formErrors.employee_id}
+                helperText={formErrors.employee_id}
                 required
               />
               <TextField

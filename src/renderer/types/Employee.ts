@@ -3,7 +3,7 @@ import { FormValidator } from '../utils/validation';
 
 export interface Employee {
   _id?: string;
-  emp_id: string;
+  employee_id: string;
   name: string;
   position: string;
   phone: string;
@@ -21,7 +21,7 @@ export interface Employee {
 
 export class EmployeeModel implements Employee {
   _id?: string;
-  emp_id: string;
+  employee_id: string;
   name: string;
   position: string;
   phone: string;
@@ -38,7 +38,7 @@ export class EmployeeModel implements Employee {
 
   constructor(data: Partial<Employee> = {}) {
     this._id = data._id;
-    this.emp_id = data.emp_id || '';
+    this.employee_id = data.employee_id || '';
     this.name = data.name || '';
     this.position = data.position || '';
     this.phone = data.phone || '';
@@ -79,7 +79,7 @@ export class EmployeeModel implements Employee {
     const validator = new FormValidator();
     
     validator
-      .required(this.emp_id, 'emp_id', 'Employee ID is required')
+      .required(this.employee_id, 'employee_id', 'Employee ID is required')
       .required(this.name, 'name', 'Name is required')
       .required(this.position, 'position', 'Position is required')
       .min(this.salary, 0, 'salary', 'Salary cannot be negative');

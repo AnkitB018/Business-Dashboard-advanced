@@ -784,7 +784,7 @@ class DatabaseService {
       // Create salary history entry
       const salaryHistory: Omit<SalaryHistory, '_id'> = {
         employee_id: employeeId,
-        emp_id: employee.emp_id,
+        emp_id: employee.employee_id,
         employee_name: employee.name,
         previous_salary: currentSalary,
         new_salary: newSalary,
@@ -898,7 +898,7 @@ class DatabaseService {
       // Create employment history entry
       const employmentHistory: Omit<EmploymentHistory, '_id'> = {
         employee_id: employeeId,
-        emp_id: employee.emp_id,
+        emp_id: employee.employee_id,
         employee_name: employee.name,
         event_type: eventType,
         previous_status: previousStatus,

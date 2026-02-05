@@ -285,7 +285,7 @@ export const validateEmployee = (data: any): ValidationErrors => {
   const validator = new FormValidator();
   
   validator
-    .required(data.emp_id, 'emp_id', 'Employee ID is required')
+    .required(data.employee_id, 'employee_id', 'Employee ID is required')
     .required(data.name, 'name', 'Name is required')
     .required(data.position, 'position', 'Position is required')
     .required(data.phone, 'phone', 'Phone is required')

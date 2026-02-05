@@ -204,7 +204,7 @@ const WageManagement: React.FC = () => {
         
         // Get attendance records for the period
         const attendanceRecords = await databaseService.getAttendanceByEmployeeAndDateRange(
-          employeeData.employee_id || employeeData.emp_id,
+          employeeData.employee_id,
           wageCalculationPeriod.startDate,
           wageCalculationPeriod.endDate
         );
@@ -233,7 +233,7 @@ const WageManagement: React.FC = () => {
         const calculatedWage = (effectiveHours * dailyWage) / 8;
 
         results.push({
-          employeeId: employeeData.employee_id || employeeData.emp_id || employeeData._id,
+          employeeId: employeeData.employee_id || employeeData._id,
           employeeName: employeeData.name || 'Unknown',
           totalHours,
           exceptionHours: exceptionHours * attendanceRecords.length,
@@ -269,7 +269,7 @@ const WageManagement: React.FC = () => {
         
         // Get attendance records for the bonus period
         const attendanceRecords = await databaseService.getAttendanceByEmployeeAndDateRange(
-          employeeData.employee_id || employeeData.emp_id,
+          employeeData.employee_id,
           bonusCalculationPeriod.startDate,
           bonusCalculationPeriod.endDate
         );
@@ -300,7 +300,7 @@ const WageManagement: React.FC = () => {
         const bonusAmount = (totalEarned * bonusRate) / 100;
 
         results.push({
-          employeeId: employeeData.employee_id || employeeData.emp_id || employeeData._id,
+          employeeId: employeeData.employee_id || employeeData._id,
           employeeName: employeeData.name || 'Unknown',
           totalEarned,
           bonusRate,
@@ -362,7 +362,7 @@ const WageManagement: React.FC = () => {
                     <MenuItem key={employee._id} value={employee._id}>
                       <Box sx={{ display: 'flex', alignItems: 'center' }}>
                         <PersonIcon sx={{ mr: 1, color: 'primary.main' }} />
-                        {empData.name} ({empData.employee_id || empData.emp_id})
+                        {empData.name} ({empData.employee_id})
                       </Box>
                     </MenuItem>
                   );

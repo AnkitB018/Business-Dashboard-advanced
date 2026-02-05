@@ -130,11 +130,10 @@ ipcMain.handle('db-operation', async (event, operation: string, collection: stri
         result = await coll.findOne(convertId(data?.query) || {});
         break;
       case 'insertOne':
-        // Bypass document validation to allow optional fields
-        result = await coll.insertOne(data, { bypassDocumentValidation: true });
+        result = await coll.insertOne(data);
         break;
       case 'updateOne':
-        result = await coll.updateOne(convertId(data.filter), { $set: data.update }, { bypassDocumentValidation: true });
+        result = await coll.updateOne(convertId(data.filter), { $set: data.update });
         break;
       case 'deleteOne':
         result = await coll.deleteOne(convertId(data));

@@ -94,7 +94,7 @@ const AttendanceManagement: React.FC = () => {
         return {
           _id: record._id,
           attendance_id: record._id || `ATT${Date.now()}`,
-          employee_id: employee?.emp_id || record.employeeId,
+          employee_id: employee?.employee_id || record.employeeId,
           employee_name: employee?.name || 'Unknown Employee',
           date: new Date(record.date),
           check_in_time: record.checkIn,
