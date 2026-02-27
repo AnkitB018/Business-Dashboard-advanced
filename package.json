@@ -40,6 +40,7 @@
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "@types/recharts": "^1.8.29",
+    "dayjs": "^1.11.19",
     "mongodb": "^6.20.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

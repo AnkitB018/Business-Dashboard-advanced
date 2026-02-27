@@ -4,116 +4,178 @@ import {
   Paper,
   Typography,
   Button,
+  TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Card,
+  CardContent,
+  Chip,
+  Stack,
+  Divider,
+  Alert,
+  Snackbar,
+  IconButton,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  TextField,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
+  Tooltip,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  Card,
-  CardContent,
-  Chip,
-  IconButton,
-  Tooltip,
-  Alert,
-  Snackbar,
-  Tab,
-  Tabs,
-  Avatar,
 } from '@mui/material';
 import {
-  Add,
   CheckCircle,
   Cancel,
   AccessTime,
   Person,
-  Search,
   Refresh,
-  Timer,
-  TimerOff,
+  Save,
+  CalendarMonth,
+  ArrowBack,
+  ArrowForward,
+  Add,
 } from '@mui/icons-material';
-import { Attendance, AttendanceFormData } from '../types/Attendance';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { TimePicker } from '@mui/x-date-pickers/TimePicker';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs, { Dayjs } from 'dayjs';
 import { Employee } from '../types/Employee';
 import databaseService from '../services/DatabaseService';
-import { validateAttendance } from '../utils/validation';
+
+interface AttendanceRecord {
+  _id?: string;
+  employeeId: string;
+  employee_id: string;
+  employee_name: string;
+  date: string;
+  check_in_time: string;
+  check_out_time: string;
+  break_time: number; // in hours
+  working_hours: number;
+  overtime_hours: number;
+  status: 'Present' | 'Absent' | 'Half Day' | 'Leave';
+  notes?: string;
+}
+
+interface DayStatus {
+  date: Date;
+  status: 'Present' | 'Absent' | 'Half Day' | 'Leave' | 'None';
+  working_hours?: number;
+  overtime_hours?: number;
+}
 
 const AttendanceManagement: React.FC = () => {
-  const [attendanceRecords, setAttendanceRecords] = useState<Attendance[]>([]);
+  // State management
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [selectedEmployee, setSelectedEmployee] = useState<string>('');
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   
-  // Dialog states
-  const [openDialog, setOpenDialog] = useState(false);
-  const [editingAttendance, setEditingAttendance] = useState<Attendance | null>(null);
-  const [formData, setFormData] = useState<AttendanceFormData>({
-    employee_id: '',
-    check_in_time: '',
-    check_out_time: '',
-    date: new Date().toISOString().split('T')[0],
-    status: 'Present',
-    overtime_hours: 0,
-    notes: ''
-  });
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  // Initialize calendar to show last 3 months (2 months ago + current)
+  const getDefaultCalendarStart = () => {
+    const date = new Date();
+    date.setMonth(date.getMonth() - 2);
+    date.setDate(1);
+    return date;
+  };
+  const [calendarStartMonth, setCalendarStartMonth] = useState<Date>(getDefaultCalendarStart());
+  
+  // Form data for daily attendance entry
+  const [dailyAttendance, setDailyAttendance] = useState<Map<string, {
+    status: 'Present' | 'Absent' | 'Half Day' | 'Leave';
+    check_in_time: string;
+    check_out_time: string;
+    break_time: number;
+    notes: string;
+  }>>(new Map());
 
-  // Snackbar states
+  // UI States
+  const [loading, setLoading] = useState(false);
+  const [openAttendanceDialog, setOpenAttendanceDialog] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
 
-  // Tab state
-  const [tabValue, setTabValue] = useState(0);
-
-  // Quick check-in/out states
-  const [quickCheckEmployee, setQuickCheckEmployee] = useState<string>('');
-
   useEffect(() => {
-    loadEmployeesAndAttendance();
+    loadEmployees();
   }, []);
 
-  const loadEmployeesAndAttendance = async () => {
+  useEffect(() => {
+    if (selectedEmployee) {
+      loadEmployeeAttendance();
+    }
+  }, [selectedEmployee, calendarStartMonth]);
+
+  useEffect(() => {
+    loadDailyAttendance();
+  }, [selectedDate]);
+
+  const loadEmployees = async () => {
+    try {
+      const allEmployees = await databaseService.getAllEmployees();
+      // Keep all employees for filtering, not just currently active ones
+      setEmployees(allEmployees);
+    } catch (error) {
+      console.error('Error loading employees:', error);
+      showSnackbar('Failed to load employees', 'error');
+    }
+  };
+
+  const loadEmployeeAttendance = async () => {
+    if (!selectedEmployee) return;
+    
     try {
       setLoading(true);
-      // Load employees first
-      const allEmployees = await databaseService.getAllEmployees();
-      setEmployees(allEmployees);
+      // Get attendance for the selected employee for 3 months
+      const startDate = new Date(calendarStartMonth);
+      startDate.setDate(1);
+      const endDate = new Date(startDate);
+      endDate.setMonth(endDate.getMonth() + 3);
       
-      // Then load attendance data with employee information
-      const result = await databaseService.getAllAttendance();
-      const attendanceRecords: Attendance[] = result.map((record: any) => {
-        const employee = allEmployees.find(emp => emp._id === record.employeeId);
-        return {
-          _id: record._id,
-          attendance_id: record._id || `ATT${Date.now()}`,
-          employee_id: employee?.employee_id || record.employeeId,
-          employee_name: employee?.name || 'Unknown Employee',
-          date: new Date(record.date),
-          check_in_time: record.checkIn,
-          check_out_time: record.checkOut,
-          working_hours: record.hoursWorked || 0,
-          overtime_hours: 0,
-          status: record.status as any,
-          notes: record.notes,
-          created_date: record.createdAt || new Date(),
-          last_modified: record.updatedAt || new Date()
-        };
-      });
-      setAttendanceRecords(attendanceRecords);
-      showSnackbar(`Loaded ${attendanceRecords.length} attendance records`, 'success');
+      const result = await databaseService.getAttendanceByEmployeeAndDateRange(
+        selectedEmployee,
+        startDate.toISOString().split('T')[0],
+        endDate.toISOString().split('T')[0]
+      );
+      
+      setAttendanceRecords(result);
     } catch (error) {
-      console.error('Error loading data:', error);
-      showSnackbar('Failed to load data', 'error');
+      console.error('Error loading attendance:', error);
+      showSnackbar('Failed to load attendance records', 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadDailyAttendance = async () => {
+    try {
+      // Load all attendance records for the selected date
+      const result = await databaseService.getAllAttendance();
+      const dateRecords = result.filter((r: any) => {
+        // Normalize the record date string (handle both string and Date types)
+        const recordDate = typeof r.date === 'string' ? r.date : r.date.toISOString().split('T')[0];
+        return recordDate === selectedDate;
+      });
+      
+      // Populate the daily attendance map
+      const attendanceMap = new Map();
+      dateRecords.forEach((record: any) => {
+        attendanceMap.set(record.employeeId, {
+          status: record.status || 'Present',
+          check_in_time: record.check_in_time || '',
+          check_out_time: record.check_out_time || '',
+          break_time: record.break_time || 0,
+          notes: record.notes || ''
+        });
+      });
+      
+      setDailyAttendance(attendanceMap);
+    } catch (error) {
+      console.error('Error loading daily attendance:', error);
     }
   };
 
@@ -121,599 +183,614 @@ const AttendanceManagement: React.FC = () => {
     setSnackbar({ open: true, message, severity });
   };
 
-  const handleCloseSnackbar = () => {
-    setSnackbar({ ...snackbar, open: false });
-  };
-
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue);
-  };
-
-  const validateForm = (): boolean => {
-    const errors = validateAttendance(formData);
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  const calculateWorkingHours = (checkIn: string, checkOut: string): number => {
-    if (!checkIn || !checkOut) return 0;
+  const calculateWorkingHours = (checkIn: string, checkOut: string, breakTime: number): { 
+    working: number; 
+    overtime: number; 
+    isHalfDay: boolean 
+  } => {
+    if (!checkIn || !checkOut) return { working: 0, overtime: 0, isHalfDay: false };
     
-    const checkInTime = new Date(`${formData.date}T${checkIn}`);
-    const checkOutTime = new Date(`${formData.date}T${checkOut}`);
+    const [inHour, inMin] = checkIn.split(':').map(Number);
+    const [outHour, outMin] = checkOut.split(':').map(Number);
     
-    const diff = checkOutTime.getTime() - checkInTime.getTime();
-    return Math.round((diff / (1000 * 60 * 60)) * 100) / 100;
+    const totalMinutes = (outHour * 60 + outMin) - (inHour * 60 + inMin);
+    const totalHours = totalMinutes / 60;
+    const workingHours = Math.max(0, totalHours - breakTime);
+    
+    const standardHours = 8;
+    const overtime = Math.max(0, workingHours - standardHours);
+    const isHalfDay = workingHours < 4;
+    
+    return {
+      working: Math.round(workingHours * 100) / 100,
+      overtime: Math.round(overtime * 100) / 100,
+      isHalfDay
+    };
   };
 
-  const handleSubmit = async () => {
-    if (!validateForm()) return;
-
-    try {
-      const employee = employees.find(emp => emp._id === formData.employee_id);
-      if (!employee) {
-        showSnackbar('Employee not found', 'error');
-        return;
-      }
-
-      const workingHours = calculateWorkingHours(formData.check_in_time, formData.check_out_time || '');
-
-      // Convert to the format expected by DatabaseService
-      const attendanceRecord = {
-        employeeId: formData.employee_id,
-        date: formData.date,
-        checkIn: formData.check_in_time,
-        checkOut: formData.check_out_time || '',
-        hoursWorked: workingHours,
-        status: formData.status,
-        notes: formData.notes || ''
-      };
-
-      if (editingAttendance) {
-        await databaseService.updateAttendanceRecord(editingAttendance._id!, attendanceRecord);
-        showSnackbar('Attendance record updated successfully', 'success');
-      } else {
-        await databaseService.addAttendanceRecord(attendanceRecord);
-        showSnackbar('Attendance record created successfully', 'success');
-      }
-
-      handleCloseDialog();
-      loadEmployeesAndAttendance();
-    } catch (error) {
-      console.error('Error saving attendance:', error);
-      showSnackbar('Failed to save attendance record', 'error');
-    }
-  };
-
-  const handleQuickCheckIn = async () => {
-    if (!quickCheckEmployee) {
-      showSnackbar('Please select an employee', 'error');
-      return;
-    }
-
-    try {
-      const employee = employees.find(emp => emp._id === quickCheckEmployee);
-      if (!employee) {
-        showSnackbar('Employee not found', 'error');
-        return;
-      }
-
-      const now = new Date();
-      const currentTime = now.toTimeString().slice(0, 5);
-      const today = now.toISOString().split('T')[0];
-
-      const attendanceRecord = {
-        employeeId: quickCheckEmployee,
-        date: today,
-        checkIn: currentTime,
-        checkOut: '',
-        hoursWorked: 0,
-        status: 'Present',
-        notes: ''
-      };
-
-      await databaseService.addAttendanceRecord(attendanceRecord);
-      showSnackbar(`${employee.name} checked in successfully at ${currentTime}`, 'success');
-      setQuickCheckEmployee('');
-      loadEmployeesAndAttendance();
-    } catch (error) {
-      console.error('Error during quick check-in:', error);
-      showSnackbar('Failed to check in employee', 'error');
-    }
-  };
-
-  const handleQuickCheckOut = async (attendanceId: string) => {
-    try {
-      const now = new Date();
-      const currentTime = now.toTimeString().slice(0, 5);
-
-      const attendance = attendanceRecords.find(record => record._id === attendanceId);
-      if (!attendance || !attendance.check_in_time) {
-        showSnackbar('Invalid attendance record', 'error');
-        return;
-      }
-
-      const workingHours = calculateWorkingHours(attendance.check_in_time, currentTime);
-
-      const updateData = {
-        checkOut: currentTime,
-        hoursWorked: workingHours
-      };
-
-      await databaseService.updateAttendanceRecord(attendanceId, updateData);
-      showSnackbar(`Employee checked out successfully at ${currentTime}`, 'success');
-      loadEmployeesAndAttendance();
-    } catch (error) {
-      console.error('Error during quick check-out:', error);
-      showSnackbar('Failed to check out employee', 'error');
-    }
-  };
-
-  const handleEdit = (attendance: Attendance) => {
-    setEditingAttendance(attendance);
-    setFormData({
-      employee_id: attendance.employee_id,
-      check_in_time: attendance.check_in_time,
-      check_out_time: attendance.check_out_time || '',
-      date: new Date(attendance.date).toISOString().split('T')[0],
-      status: attendance.status,
-      overtime_hours: attendance.overtime_hours || 0,
-      notes: attendance.notes || ''
-    });
-    setOpenDialog(true);
-  };
-
-  const handleDelete = async (attendanceId: string) => {
-    if (!window.confirm('Are you sure you want to delete this attendance record?')) return;
-
-    try {
-      await databaseService.deleteAttendanceRecord(attendanceId);
-      showSnackbar('Attendance record deleted successfully', 'success');
-      loadEmployeesAndAttendance();
-    } catch (error) {
-      console.error('Error deleting attendance:', error);
-      showSnackbar('Failed to delete attendance record', 'error');
-    }
-  };
-
-  const handleCloseDialog = () => {
-    setOpenDialog(false);
-    setEditingAttendance(null);
-    setFormData({
-      employee_id: '',
+  const handleStatusChange = (employeeId: string, field: string, value: any) => {
+    const current = dailyAttendance.get(employeeId) || {
+      status: 'Present' as 'Present' | 'Absent' | 'Half Day' | 'Leave',
       check_in_time: '',
       check_out_time: '',
-      date: new Date().toISOString().split('T')[0],
-      status: 'Present',
-      overtime_hours: 0,
+      break_time: 0,
       notes: ''
-    });
-    setFormErrors({});
+    };
+    
+    setDailyAttendance(new Map(dailyAttendance.set(employeeId, {
+      ...current,
+      [field]: value
+    })));
   };
 
-  const handleFormChange = (field: keyof AttendanceFormData) => (
-    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { target: { value: unknown } }
-  ) => {
-    const value = event.target.value;
-    setFormData(prev => ({ ...prev, [field]: value }));
-    if (formErrors[field]) {
-      setFormErrors(prev => ({ ...prev, [field]: '' }));
+  const saveDailyAttendance = async () => {
+    try {
+      setLoading(true);
+      let savedCount = 0;
+      
+      console.log('Saving attendance for date:', selectedDate);
+      
+      for (const [employeeId, data] of dailyAttendance.entries()) {
+        const employee = employees.find(e => e._id === employeeId);
+        if (!employee) continue;
+        
+        // Calculate working hours and overtime
+        const calculation = calculateWorkingHours(
+          data.check_in_time,
+          data.check_out_time,
+          data.break_time
+        );
+        
+        // Determine final status
+        let finalStatus = data.status;
+        if (finalStatus === 'Present' && calculation.isHalfDay) {
+          finalStatus = 'Half Day';
+        }
+        
+        const attendanceRecord = {
+          employeeId: employeeId,
+          employee_id: employee.employee_id,
+          employee_name: employee.name,
+          date: selectedDate,
+          check_in_time: data.check_in_time,
+          check_out_time: data.check_out_time,
+          break_time: data.break_time,
+          working_hours: calculation.working,
+          overtime_hours: calculation.overtime,
+          status: finalStatus,
+          notes: data.notes
+        };
+        
+        console.log('Attendance record to save:', attendanceRecord);
+        
+        // Check if record exists for this date
+        const existingRecord = await databaseService.getAllAttendance().then((records: any[]) => {
+          const found = records.find((r: any) => {
+            // Normalize both dates for comparison
+            const recordDate = typeof r.date === 'string' ? r.date : new Date(r.date).toISOString().split('T')[0];
+            const matches = r.employeeId === employeeId && recordDate === selectedDate;
+            if (matches) {
+              console.log('Found existing record:', r._id, 'for date:', recordDate);
+            }
+            return matches;
+          });
+          return found;
+        });
+        
+        if (existingRecord) {
+          console.log('Updating existing record:', existingRecord._id);
+          await databaseService.updateAttendanceRecord(existingRecord._id, attendanceRecord);
+        } else {
+          console.log('Adding new attendance record');
+          await databaseService.addAttendanceRecord(attendanceRecord);
+        }
+        
+        savedCount++;
+      }
+      
+      showSnackbar(`Saved attendance for ${savedCount} employee(s)`, 'success');
+      loadDailyAttendance();
+      if (selectedEmployee) {
+        loadEmployeeAttendance();
+      }
+      setOpenAttendanceDialog(false);
+    } catch (error) {
+      console.error('Error saving attendance:', error);
+      showSnackbar('Failed to save attendance records', 'error');
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const getMonthDays = (monthIndex: number): DayStatus[] => {
+    const month = new Date(calendarStartMonth);
+    month.setMonth(month.getMonth() + monthIndex);
+    month.setDate(1);
+    
+    const year = month.getFullYear();
+    const monthNum = month.getMonth();
+    const daysInMonth = new Date(year, monthNum + 1, 0).getDate();
+    
+    const days: DayStatus[] = [];
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, monthNum, day);
+      // Create date string without timezone conversion
+      const dateStr = `${year}-${String(monthNum + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      
+      // Find attendance record for this date
+      const record = attendanceRecords.find((r: any) => {
+        // Normalize the record date string (handle both string and Date types)
+        const recordDate = typeof r.date === 'string' ? r.date : r.date.toISOString().split('T')[0];
+        return recordDate === dateStr;
+      });
+      
+      days.push({
+        date,
+        status: record ? (record.status as any) : 'None',
+        working_hours: record?.working_hours,
+        overtime_hours: record?.overtime_hours
+      });
+    }
+    
+    return days;
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Present': return 'success';
       case 'Absent': return 'error';
-      case 'Late': return 'warning';
-      case 'Half Day': return 'info';
+      case 'Half Day': return 'warning';
+      case 'Leave': return 'info';
       default: return 'default';
     }
   };
 
-  const filteredRecords = attendanceRecords.filter(record => {
-    const matchesSearch = record.employee_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         record.attendance_id.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || record.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'Present': return <CheckCircle fontSize="small" />;
+      case 'Absent': return <Cancel fontSize="small" />;
+      case 'Half Day': return <AccessTime fontSize="small" />;
+      default: return null;
+    }
+  };
 
-  // Calculate statistics
-  const totalRecords = filteredRecords.length;
-  const presentCount = filteredRecords.filter(r => r.status === 'Present').length;
-  const absentCount = filteredRecords.filter(r => r.status === 'Absent').length;
-  const averageWorkingHours = totalRecords > 0 
-    ? (filteredRecords.reduce((sum, r) => sum + (r.working_hours || 0), 0) / totalRecords).toFixed(2)
-    : '0';
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    const newDate = new Date(calendarStartMonth);
+    newDate.setMonth(newDate.getMonth() + (direction === 'prev' ? -1 : 1));
+    setCalendarStartMonth(newDate);
+  };
+
+  const isToday = (date: Date): boolean => {
+    const today = new Date();
+    return date.getDate() === today.getDate() &&
+           date.getMonth() === today.getMonth() &&
+           date.getFullYear() === today.getFullYear();
+  };
+
+  const isPastDate = (dateStr: string): boolean => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const selected = new Date(dateStr);
+    return selected < today;
+  };
+
+  // Filter employees who were active on a specific date
+  const getActiveEmployeesOnDate = (dateStr: string): Employee[] => {
+    const selectedDate = new Date(dateStr);
+    selectedDate.setHours(0, 0, 0, 0);
+
+    return employees.filter(emp => {
+      const hireDate = new Date(emp.hire_date);
+      hireDate.setHours(0, 0, 0, 0);
+      
+      // Employee must have been hired on or before the selected date
+      if (hireDate > selectedDate) return false;
+      
+      // Check if employee was still active on that date
+      if (emp.employment_status === 'active') return true;
+      
+      // If not currently active, check termination date
+      if (emp.termination_date) {
+        const terminationDate = new Date(emp.termination_date);
+        terminationDate.setHours(0, 0, 0, 0);
+        // Employee is included if termination was after the selected date
+        return terminationDate > selectedDate;
+      }
+      
+      return false;
+    });
+  };
+
+  // Calculate calendar start month based on employee hire date
+  const getCalendarStartMonth = (employeeId: string): Date => {
+    const employee = employees.find(e => e._id === employeeId);
+    if (!employee) return getDefaultCalendarStart();
+    
+    const today = new Date();
+    const hireDate = new Date(employee.hire_date);
+    
+    // Calculate 2 months ago from today (to show last 3 months including current)
+    const twoMonthsAgo = new Date(today);
+    twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+    twoMonthsAgo.setDate(1); // Start of month
+    
+    // If hired within last 3 months, start from hire month
+    if (hireDate > twoMonthsAgo) {
+      const hireDateMonth = new Date(hireDate);
+      hireDateMonth.setDate(1); // Start of hire month
+      return hireDateMonth;
+    }
+    
+    // Otherwise, show last 3 months including current
+    return twoMonthsAgo;
+  };
+
+  // Handle employee selection and update calendar start month
+  const handleEmployeeSelection = (employeeId: string) => {
+    setSelectedEmployee(employeeId);
+    if (employeeId) {
+      const startMonth = getCalendarStartMonth(employeeId);
+      setCalendarStartMonth(startMonth);
+    }
+  };
 
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom sx={{ 
-        background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)',
+        fontWeight: 600,
+        background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
         backgroundClip: 'text',
         WebkitBackgroundClip: 'text',
         color: 'transparent',
-        fontWeight: 'bold',
         mb: 3
       }}>
-        ⏰ Attendance Management
+        📅 Attendance Management
       </Typography>
 
-      {/* Statistics Cards */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 2, mb: 3 }}>
-        <Card>
-          <CardContent sx={{ textAlign: 'center' }}>
-            <Avatar sx={{ 
-              mx: 'auto', 
-              mb: 1, 
-              background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)' 
-            }}>
-              <Person />
-            </Avatar>
-            <Typography variant="h6" fontWeight="bold">{totalRecords}</Typography>
-            <Typography variant="body2" color="text.secondary">Total Records</Typography>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent sx={{ textAlign: 'center' }}>
-            <Avatar sx={{ mx: 'auto', mb: 1, bgcolor: 'success.main' }}>
-              <CheckCircle />
-            </Avatar>
-            <Typography variant="h6" fontWeight="bold">{presentCount}</Typography>
-            <Typography variant="body2" color="text.secondary">Present</Typography>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent sx={{ textAlign: 'center' }}>
-            <Avatar sx={{ mx: 'auto', mb: 1, bgcolor: 'error.main' }}>
-              <Cancel />
-            </Avatar>
-            <Typography variant="h6" fontWeight="bold">{absentCount}</Typography>
-            <Typography variant="body2" color="text.secondary">Absent</Typography>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent sx={{ textAlign: 'center' }}>
-            <Avatar sx={{ mx: 'auto', mb: 1, bgcolor: 'info.main' }}>
-              <AccessTime />
-            </Avatar>
-            <Typography variant="h6" fontWeight="bold">{averageWorkingHours}h</Typography>
-            <Typography variant="body2" color="text.secondary">Avg. Working Hours</Typography>
-          </CardContent>
-        </Card>
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+        <Button
+          variant="contained"
+          startIcon={<Add />}
+          onClick={() => setOpenAttendanceDialog(true)}
+          color="primary"
+        >
+          Add Attendance
+        </Button>
       </Box>
 
-      {/* Tabs */}
-      <Paper sx={{ mb: 3 }}>
-        <Tabs value={tabValue} onChange={handleTabChange}>
-          <Tab label="Attendance Records" />
-          <Tab label="Quick Check-In/Out" />
-        </Tabs>
-      </Paper>
+      {/* Employee Calendar View */}
+      <Card>
+        <CardContent>
+          <Stack spacing={2}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="h6">
+                    Employee Attendance Calendar
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <IconButton size="small" onClick={() => navigateMonth('prev')}>
+                      <ArrowBack />
+                    </IconButton>
+                    <IconButton size="small" onClick={() => navigateMonth('next')}>
+                      <ArrowForward />
+                    </IconButton>
+                  </Box>
+                </Box>
 
-      {tabValue === 0 && (
-        <>
-          {/* Filters and Actions */}
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-              <TextField
-                placeholder="Search by employee name or ID..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                InputProps={{
-                  startAdornment: <Search sx={{ mr: 1, color: 'action.disabled' }} />
-                }}
-                sx={{ minWidth: 250 }}
-              />
-              <FormControl sx={{ minWidth: 150 }}>
-                <InputLabel>Status</InputLabel>
-                <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} label="Status">
-                  <MenuItem value="all">All Status</MenuItem>
-                  <MenuItem value="Present">Present</MenuItem>
-                  <MenuItem value="Absent">Absent</MenuItem>
-                  <MenuItem value="Late">Late</MenuItem>
-                  <MenuItem value="Half Day">Half Day</MenuItem>
-                </Select>
-              </FormControl>
-              <Button
-                variant="contained"
-                startIcon={<Add />}
-                onClick={() => setOpenDialog(true)}
-                sx={{
-                  background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)',
-                  '&:hover': {
-                    background: 'linear-gradient(135deg, #b91c1c 0%, #7f1d1d 100%)'
-                  }
-                }}
-              >
-                Add Record
-              </Button>
-              <Tooltip title="Refresh">
-                <IconButton onClick={loadEmployeesAndAttendance}>
-                  <Refresh />
-                </IconButton>
-              </Tooltip>
-            </Box>
-          </Paper>
+                <FormControl fullWidth>
+                  <InputLabel>Select Employee</InputLabel>
+                  <Select
+                    value={selectedEmployee}
+                    label="Select Employee"
+                    onChange={(e) => handleEmployeeSelection(e.target.value)}
+                  >
+                    <MenuItem value="">None Selected</MenuItem>
+                    {employees.filter(emp => emp.employment_status === 'active').map((emp) => (
+                      <MenuItem key={emp._id} value={emp._id}>
+                        {emp.name} ({emp.employee_id})
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
 
-          {/* Attendance Table */}
-          <Paper>
+                {selectedEmployee ? (
+                  <Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+                      <Typography variant="subtitle1" color="text.secondary">
+                        {calendarStartMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} - {
+                          new Date(calendarStartMonth.getFullYear(), calendarStartMonth.getMonth() + 2, 0).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+                        }
+                      </Typography>
+                    </Box>
+
+                    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2 }}>
+                      {[0, 1, 2].map((monthIndex) => {
+                        const monthDays = getMonthDays(monthIndex);
+                        const monthDate = new Date(calendarStartMonth);
+                        monthDate.setMonth(monthDate.getMonth() + monthIndex);
+                        
+                        return (
+                          <Box key={monthIndex} sx={{ flex: 1 }}>
+                            <Paper variant="outlined" sx={{ p: 2 }}>
+                              <Typography variant="subtitle2" align="center" gutterBottom sx={{ fontWeight: 600 }}>
+                                {monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                              </Typography>
+                              
+                              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                {/* Day headers */}
+                                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                  {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
+                                    <Box key={i} sx={{ 
+                                      flex: 1,
+                                      textAlign: 'center', 
+                                      fontSize: '0.7rem', 
+                                      fontWeight: 600,
+                                      color: 'text.secondary'
+                                    }}>
+                                      {day}
+                                    </Box>
+                                  ))}
+                                </Box>
+                                
+                                {/* Calendar grid */}
+                                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0.5 }}>
+                                  {/* Empty cells for first week */}
+                                  {Array.from({ length: monthDays[0].date.getDay() }).map((_, i) => (
+                                    <Box key={`empty-${i}`} sx={{ height: 32 }} />
+                                  ))}
+                                  
+                                  {/* Day cells */}
+                                  {monthDays.map((day, i) => (
+                                    <Tooltip 
+                                      key={i}
+                                      title={day.status !== 'None' ? 
+                                        `${day.status} - ${day.working_hours || 0}hrs${day.overtime_hours ? `, OT: ${day.overtime_hours}hrs` : ''}` 
+                                        : 'No record'
+                                      }
+                                    >
+                                      <Box sx={{
+                                        height: 32,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        borderRadius: 1,
+                                        fontSize: '0.75rem',
+                                        cursor: 'pointer',
+                                        bgcolor: day.status !== 'None' ? 
+                                          (day.status === 'Present' ? 'success.light' :
+                                           day.status === 'Absent' ? 'error.light' :
+                                           day.status === 'Half Day' ? 'warning.light' :
+                                           day.status === 'Leave' ? 'info.light' : 'transparent') : 
+                                          'transparent',
+                                        color: day.status !== 'None' ? 'white' : 'text.primary',
+                                        border: isToday(day.date) ? '2px solid #1976d2' : 'none',
+                                        '&:hover': {
+                                          bgcolor: day.status !== 'None' ? undefined : 'action.hover'
+                                        }
+                                      }}>
+                                        {day.date.getDate()}
+                                      </Box>
+                                    </Tooltip>
+                                  ))}
+                                </Box>
+                              </Box>
+                            </Paper>
+                          </Box>
+                        );
+                      })}
+                    </Box>
+
+                    {/* Legend */}
+                    <Box sx={{ mt: 2, display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
+                      <Chip label="Present" size="small" color="success" />
+                      <Chip label="Absent" size="small" color="error" />
+                      <Chip label="Half Day" size="small" color="warning" />
+                      <Chip label="Leave" size="small" color="info" />
+                    </Box>
+                  </Box>
+                ) : (
+                  <Alert severity="info">
+                    Select an employee to view their attendance calendar
+                  </Alert>
+                )}
+              </Stack>
+            </CardContent>
+          </Card>
+
+      {/* Daily Attendance Recording Dialog */}
+      <Dialog
+        open={openAttendanceDialog}
+        onClose={() => setOpenAttendanceDialog(false)}
+        maxWidth="lg"
+        fullWidth
+      >
+        <DialogTitle>
+          Daily Attendance Recording
+        </DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              type="date"
+              label="Select Date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+            />
+
+            {isPastDate(selectedDate) && (
+              <Alert severity="warning">
+                Viewing/Editing past attendance record
+              </Alert>
+            )}
+
+            <Divider />
+
+            <Typography variant="subtitle2" color="text.secondary">
+              Active Employees - {new Date(selectedDate).toLocaleDateString()}
+            </Typography>
+
             <TableContainer>
-              <Table>
+              <Table size="small">
                 <TableHead>
                   <TableRow>
                     <TableCell>Employee</TableCell>
-                    <TableCell>Date</TableCell>
                     <TableCell>Status</TableCell>
-                    <TableCell>Overtime Hours</TableCell>
-                    <TableCell>Actions</TableCell>
+                    <TableCell>Check In</TableCell>
+                    <TableCell>Check Out</TableCell>
+                    <TableCell>Break (hrs)</TableCell>
+                    <TableCell>Hours</TableCell>
+                    <TableCell>OT</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4 }}>
-                        Loading attendance records...
-                      </TableCell>
-                    </TableRow>
-                  ) : filteredRecords.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4 }}>
-                        No attendance records found
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredRecords.map((record, index) => {
-                      const recordData = record as any;
-                      const recordKey = recordData._id ? 
-                        (typeof recordData._id === 'object' ? JSON.stringify(recordData._id) : recordData._id.toString()) 
-                        : `record-${index}`;
-                      
-                      return (
-                      <TableRow key={recordKey}>
+                  {getActiveEmployeesOnDate(selectedDate).map((employee) => {
+                    const attendance = dailyAttendance.get(employee._id!) || {
+                      status: 'Present' as 'Present' | 'Absent' | 'Half Day' | 'Leave',
+                      check_in_time: '',
+                      check_out_time: '',
+                      break_time: 0,
+                      notes: ''
+                    };
+                    
+                    const calculation = calculateWorkingHours(
+                      attendance.check_in_time,
+                      attendance.check_out_time,
+                      attendance.break_time
+                    );
+
+                    return (
+                      <TableRow key={employee._id}>
                         <TableCell>
-                          <Box>
-                            <Typography variant="body2" fontWeight="medium">
-                              {record.employee_name}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              ID: {record.employee_id}
-                            </Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Person fontSize="small" color="action" />
+                            <Box>
+                              <Typography variant="body2">{employee.name}</Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {employee.employee_id}
+                              </Typography>
+                            </Box>
                           </Box>
                         </TableCell>
-                        <TableCell>{new Date(recordData.date).toLocaleDateString()}</TableCell>
                         <TableCell>
-                          <Chip 
-                            label={recordData.status || 'present'} 
-                            color={getStatusColor(recordData.status || 'present') as any}
+                          <Select
                             size="small"
-                          />
+                            value={attendance.status}
+                            onChange={(e) => handleStatusChange(employee._id!, 'status', e.target.value)}
+                            sx={{ minWidth: 100 }}
+                          >
+                            <MenuItem value="Present">Present</MenuItem>
+                            <MenuItem value="Absent">Absent</MenuItem>
+                            <MenuItem value="Leave">Leave</MenuItem>
+                          </Select>
                         </TableCell>
                         <TableCell>
-                          {recordData.overtime_hours || 0} hrs
+                          {attendance.status === 'Present' && (
+                            <LocalizationProvider dateAdapter={AdapterDayjs}>
+                              <TimePicker
+                                value={attendance.check_in_time ? dayjs(`2000-01-01T${attendance.check_in_time}`) : null}
+                                onChange={(newValue: Dayjs | null) => {
+                                  const timeStr = newValue ? newValue.format('HH:mm') : '';
+                                  handleStatusChange(employee._id!, 'check_in_time', timeStr);
+                                }}
+                                slotProps={{
+                                  textField: {
+                                    size: 'small',
+                                    sx: { width: 140 }
+                                  }
+                                }}
+                              />
+                            </LocalizationProvider>
+                          )}
                         </TableCell>
                         <TableCell>
-                          <Box sx={{ display: 'flex', gap: 1 }}>
-                            <Button size="small" onClick={() => handleEdit(record)}>
-                              Edit
-                            </Button>
-                            <Button 
-                              size="small" 
-                              color="error" 
-                              onClick={() => handleDelete(record._id!)}
-                            >
-                              Delete
-                            </Button>
-                          </Box>
+                          {attendance.status === 'Present' && (
+                            <LocalizationProvider dateAdapter={AdapterDayjs}>
+                              <TimePicker
+                                value={attendance.check_out_time ? dayjs(`2000-01-01T${attendance.check_out_time}`) : null}
+                                onChange={(newValue: Dayjs | null) => {
+                                  const timeStr = newValue ? newValue.format('HH:mm') : '';
+                                  handleStatusChange(employee._id!, 'check_out_time', timeStr);
+                                }}
+                                slotProps={{
+                                  textField: {
+                                    size: 'small',
+                                    sx: { width: 140 }
+                                  }
+                                }}
+                              />
+                            </LocalizationProvider>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {attendance.status === 'Present' && (
+                            <TextField
+                              type="number"
+                              size="small"
+                              value={attendance.break_time}
+                              onChange={(e) => handleStatusChange(employee._id!, 'break_time', parseFloat(e.target.value) || 0)}
+                              inputProps={{ min: 0, max: 4, step: 0.5 }}
+                              sx={{ width: 80 }}
+                            />
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {attendance.status === 'Present' && attendance.check_in_time && attendance.check_out_time && (
+                            <Chip 
+                              label={`${calculation.working}h`} 
+                              size="small"
+                              color={calculation.isHalfDay ? 'warning' : 'default'}
+                            />
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {attendance.status === 'Present' && calculation.overtime > 0 && (
+                            <Chip 
+                              label={`+${calculation.overtime}h`} 
+                              size="small"
+                              color="success"
+                            />
+                          )}
                         </TableCell>
                       </TableRow>
-                      );
-                    })
-                  )}
+                    );
+                  })}
                 </TableBody>
               </Table>
             </TableContainer>
-          </Paper>
-        </>
-      )}
-
-      {tabValue === 1 && (
-        <Paper sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom>Quick Check-In/Out</Typography>
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 3 }}>
-            <FormControl sx={{ minWidth: 300 }}>
-              <InputLabel>Select Employee</InputLabel>
-              <Select
-                value={quickCheckEmployee}
-                onChange={(e) => setQuickCheckEmployee(e.target.value)}
-                label="Select Employee"
-              >
-                {employees.map((employee) => (
-                  <MenuItem key={employee._id} value={employee._id}>
-                    {employee.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <Button
-              variant="contained"
-              size="large"
-              startIcon={<Timer />}
-              onClick={handleQuickCheckIn}
-              sx={{
-                background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)',
-                '&:hover': {
-                  background: 'linear-gradient(135deg, #b91c1c 0%, #7f1d1d 100%)'
-                }
-              }}
-            >
-              Quick Check-In
-            </Button>
-          </Box>
-
-          {/* Today's Check-ins */}
-          <Box sx={{ mt: 4 }}>
-            <Typography variant="h6" gutterBottom>Today's Check-ins</Typography>
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 2 }}>
-              {attendanceRecords
-                .filter(record => {
-                  const today = new Date();
-                  const recordDate = new Date(record.date);
-                  return recordDate.toDateString() === today.toDateString();
-                })
-                .map((record, index) => {
-                  const recordData = record as any;
-                  const recordKey = recordData._id ? 
-                    (typeof recordData._id === 'object' ? JSON.stringify(recordData._id) : recordData._id.toString()) 
-                    : `today-record-${index}`;
-                  
-                  return (
-                  <Card key={recordKey}>
-                    <CardContent>
-                      <Typography variant="subtitle1" fontWeight="bold">
-                        {record.employee_name}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Check-in: {record.check_in_time}
-                      </Typography>
-                      {record.check_out_time ? (
-                        <Typography variant="body2" color="text.secondary">
-                          Check-out: {record.check_out_time}
-                        </Typography>
-                      ) : (
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          startIcon={<TimerOff />}
-                          onClick={() => handleQuickCheckOut(record._id!)}
-                          sx={{ mt: 1 }}
-                        >
-                          Check Out
-                        </Button>
-                      )}
-                      <Chip 
-                        label={record.status} 
-                        color={getStatusColor(record.status) as any}
-                        size="small"
-                        sx={{ mt: 1, display: 'block', width: 'fit-content' }}
-                      />
-                    </CardContent>
-                  </Card>
-                  );
-                })}
-            </Box>
-          </Box>
-        </Paper>
-      )}
-
-      {/* Add/Edit Dialog */}
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
-        <DialogTitle>
-          {editingAttendance ? 'Edit Attendance Record' : 'Add New Attendance Record'}
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 3, mt: 1 }}>
-            <FormControl fullWidth error={!!formErrors.employee_id}>
-              <InputLabel>Employee</InputLabel>
-              <Select
-                value={formData.employee_id}
-                onChange={handleFormChange('employee_id')}
-                label="Employee"
-              >
-                {employees.map((employee) => (
-                  <MenuItem key={employee._id} value={employee._id}>
-                    {employee.name}
-                  </MenuItem>
-                ))}
-              </Select>
-              {formErrors.employee_id && (
-                <Typography variant="caption" color="error">{formErrors.employee_id}</Typography>
-              )}
-            </FormControl>
-            <TextField
-              fullWidth
-              type="date"
-              label="Date"
-              value={formData.date}
-              onChange={handleFormChange('date')}
-              InputLabelProps={{ shrink: true }}
-            />
-            <TextField
-              fullWidth
-              type="time"
-              label="Check-in Time"
-              value={formData.check_in_time}
-              onChange={handleFormChange('check_in_time')}
-              error={!!formErrors.check_in_time}
-              helperText={formErrors.check_in_time}
-              InputLabelProps={{ shrink: true }}
-            />
-            <TextField
-              fullWidth
-              type="time"
-              label="Check-out Time"
-              value={formData.check_out_time}
-              onChange={handleFormChange('check_out_time')}
-              error={!!formErrors.check_out_time}
-              helperText={formErrors.check_out_time}
-              InputLabelProps={{ shrink: true }}
-            />
-            <FormControl fullWidth>
-              <InputLabel>Status</InputLabel>
-              <Select
-                value={formData.status}
-                onChange={handleFormChange('status')}
-                label="Status"
-              >
-                <MenuItem value="Present">Present</MenuItem>
-                <MenuItem value="Absent">Absent</MenuItem>
-                <MenuItem value="Late">Late</MenuItem>
-                <MenuItem value="Half Day">Half Day</MenuItem>
-              </Select>
-            </FormControl>
-            <TextField
-              fullWidth
-              type="number"
-              label="Overtime Hours"
-              value={formData.overtime_hours}
-              onChange={handleFormChange('overtime_hours')}
-              inputProps={{ min: 0, step: 0.5 }}
-            />
-            <TextField
-              fullWidth
-              multiline
-              rows={2}
-              label="Notes"
-              value={formData.notes}
-              onChange={handleFormChange('notes')}
-              placeholder="Any additional notes or comments..."
-              sx={{ gridColumn: 'span 2' }}
-            />
-          </Box>
+          </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button 
-            onClick={handleSubmit} 
-            variant="contained"
-            sx={{
-              background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)',
-              '&:hover': {
-                background: 'linear-gradient(135deg, #b91c1c 0%, #7f1d1d 100%)'
-              }
-            }}
+          <Button
+            variant="outlined"
+            startIcon={<Refresh />}
+            onClick={loadDailyAttendance}
           >
-            {editingAttendance ? 'Update' : 'Create'}
+            Refresh
+          </Button>
+          <Button
+            onClick={() => setOpenAttendanceDialog(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<Save />}
+            onClick={saveDailyAttendance}
+            disabled={loading}
+          >
+            Save Attendance
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Snackbar */}
+      {/* Snackbar for notifications */}
       <Snackbar
         open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
       >
-        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity}>
+        <Alert severity={snackbar.severity} onClose={() => setSnackbar({ ...snackbar, open: false })}>
           {snackbar.message}
         </Alert>
       </Snackbar>

@@ -8,11 +8,15 @@ import { EmploymentHistory } from '../types/EmploymentHistory';
 interface AttendanceRecord {
   _id?: string;
   employeeId: string;
+  employee_id: string;
+  employee_name: string;
   date: string;
-  checkIn: string;
-  checkOut: string;
-  hoursWorked: number;
-  status: string;
+  check_in_time: string;
+  check_out_time: string;
+  break_time: number;
+  working_hours: number;
+  overtime_hours: number;
+  status: 'Present' | 'Absent' | 'Half Day' | 'Leave';
   notes?: string;
   createdAt?: Date;
   updatedAt?: Date;
@@ -148,7 +152,7 @@ class DatabaseService {
     
     const result = await window.electronAPI.dbOperation('find', 'attendance', { 
       query: { 
-        employee_id: employeeId,
+        employeeId: employeeId,
         date: {
           $gte: startDate,
           $lte: endDate
