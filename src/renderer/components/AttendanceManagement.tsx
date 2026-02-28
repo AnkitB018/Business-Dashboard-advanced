@@ -239,9 +239,9 @@ const AttendanceManagement: React.FC = () => {
   const handleStatusChange = (employeeId: string, field: string, value: any) => {
     const current = dailyAttendance.get(employeeId) || {
       status: 'Present' as 'Present' | 'Absent' | 'Leave',
-      check_in_time: '',
-      check_out_time: '',
-      break_time: 0,
+      check_in_time: '08:00',
+      check_out_time: '17:00',
+      break_time: 1,
       notes: ''
     };
     
@@ -258,9 +258,20 @@ const AttendanceManagement: React.FC = () => {
       
       console.log('Saving attendance for date:', selectedDate);
       
-      for (const [employeeId, data] of dailyAttendance.entries()) {
-        const employee = employees.find(e => e._id === employeeId);
-        if (!employee) continue;
+      // Get all active employees for the selected date
+      const activeEmployees = getActiveEmployeesOnDate(selectedDate);
+      
+      for (const employee of activeEmployees) {
+        const employeeId = employee._id!;
+        
+        // Get attendance data or use defaults
+        const data = dailyAttendance.get(employeeId) || {
+          status: 'Present' as 'Present' | 'Absent' | 'Leave',
+          check_in_time: '08:00',
+          check_out_time: '17:00',
+          break_time: 1,
+          notes: ''
+        };
         
         // Calculate working hours and overtime
         const calculation = calculateWorkingHours(
@@ -850,9 +861,9 @@ const AttendanceManagement: React.FC = () => {
                   {getActiveEmployeesOnDate(selectedDate).map((employee) => {
                     const attendance = dailyAttendance.get(employee._id!) || {
                       status: 'Present' as 'Present' | 'Absent' | 'Leave',
-                      check_in_time: '',
-                      check_out_time: '',
-                      break_time: 0,
+                      check_in_time: '08:00',
+                      check_out_time: '17:00',
+                      break_time: 1,
                       notes: ''
                     };
                     
