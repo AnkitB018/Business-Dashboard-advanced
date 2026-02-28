@@ -48,6 +48,10 @@ import {
   NavigateBefore,
   NavigateNext,
   GetApp,
+  PersonAdd,
+  PersonOff,
+  WorkHistory,
+  AccountBalance,
 } from '@mui/icons-material';
 import {
   LineChart,
@@ -110,6 +114,26 @@ interface FinancialMetrics {
   cashFlow: Array<{ month: string; income: number; expenses: number; profit: number }>;
 }
 
+interface EmployeeLifecycleMetrics {
+  totalEmployees: number;
+  activeEmployees: number;
+  resignedEmployees: number;
+  terminatedEmployees: number;
+  retiredEmployees: number;
+  onLeaveEmployees: number;
+  attritionRate: number;
+  avgTenure: number;
+  avgSalary: number;
+  salaryGrowthRate: number;
+  monthlySalaryTrend: Array<{ month: string; avgSalary: number; employees: number }>;
+  attritionTrend: Array<{ month: string; resignations: number; terminations: number; total: number }>;
+  departmentAttrition: Array<{ department: string; resigned: number; terminated: number; total: number; rate: number }>;
+  salaryDistribution: Array<{ range: string; count: number; percentage: number }>;
+  tenureDistribution: Array<{ range: string; count: number; percentage: number }>;
+  topReasons: Array<{ reason: string; count: number }>;
+  recentChanges: Array<{ employee_name: string; type: string; change: string; date: string }>;
+}
+
 const ReportsAndAnalytics: React.FC = () => {
   const [tabValue, setTabValue] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -121,72 +145,57 @@ const ReportsAndAnalytics: React.FC = () => {
     department: 'all'
   });
 
-  // Mock data - replace with real data from your database
   const [salesMetrics, setSalesMetrics] = useState<SalesMetrics>({
-    totalRevenue: 125000,
-    totalOrders: 342,
-    averageOrderValue: 365.50,
-    topProducts: [
-      { name: 'Premium Package', sales: 45, revenue: 22500 },
-      { name: 'Standard Service', sales: 78, revenue: 18200 },
-      { name: 'Consulting Hours', sales: 32, revenue: 16000 },
-      { name: 'Software License', sales: 25, revenue: 12500 }
-    ],
-    monthlySales: [
-      { month: 'Jan', revenue: 18000, orders: 45 },
-      { month: 'Feb', revenue: 22000, orders: 58 },
-      { month: 'Mar', revenue: 25000, orders: 63 },
-      { month: 'Apr', revenue: 28000, orders: 72 },
-      { month: 'May', revenue: 32000, orders: 84 }
-    ]
+    totalRevenue: 0,
+    totalOrders: 0,
+    averageOrderValue: 0,
+    topProducts: [],
+    monthlySales: []
   });
 
   const [attendanceMetrics, setAttendanceMetrics] = useState<AttendanceMetrics>({
-    totalEmployees: 125,
-    presentToday: 118,
-    absentToday: 7,
-    lateArrivals: 12,
-    averageWorkingHours: 8.2,
-    departmentAttendance: [
-      { department: 'Sales', present: 28, total: 30 },
-      { department: 'Development', present: 35, total: 38 },
-      { department: 'Marketing', present: 18, total: 20 },
-      { department: 'HR', present: 8, total: 8 },
-      { department: 'Finance', present: 12, total: 12 },
-      { department: 'Operations', present: 17, total: 17 }
-    ]
+    totalEmployees: 0,
+    presentToday: 0,
+    absentToday: 0,
+    lateArrivals: 0,
+    averageWorkingHours: 0,
+    departmentAttendance: []
   });
 
   const [purchaseMetrics, setPurchaseMetrics] = useState<PurchaseMetrics>({
-    totalSpent: 85000,
-    totalOrders: 156,
-    topSuppliers: [
-      { name: 'TechCorp Solutions', amount: 25000, orders: 15 },
-      { name: 'Office Supplies Co', amount: 18000, orders: 32 },
-      { name: 'MetalWorks Industries', amount: 15000, orders: 8 },
-      { name: 'Software Licensing Inc', amount: 12000, orders: 6 }
-    ],
-    categoryBreakdown: [
-      { category: 'Technology', amount: 35000, percentage: 41.2 },
-      { category: 'Office Supplies', amount: 20000, percentage: 23.5 },
-      { category: 'Raw Materials', amount: 18000, percentage: 21.2 },
-      { category: 'Services', amount: 12000, percentage: 14.1 }
-    ],
-    outstandingPayments: 15000
+    totalSpent: 0,
+    totalOrders: 0,
+    topSuppliers: [],
+    categoryBreakdown: [],
+    outstandingPayments: 0
   });
 
   const [financialMetrics, setFinancialMetrics] = useState<FinancialMetrics>({
-    totalRevenue: 125000,
-    totalExpenses: 85000,
-    netProfit: 40000,
-    profitMargin: 32.0,
-    cashFlow: [
-      { month: 'Jan', income: 18000, expenses: 12000, profit: 6000 },
-      { month: 'Feb', income: 22000, expenses: 15000, profit: 7000 },
-      { month: 'Mar', income: 25000, expenses: 18000, profit: 7000 },
-      { month: 'Apr', income: 28000, expenses: 19000, profit: 9000 },
-      { month: 'May', income: 32000, expenses: 21000, profit: 11000 }
-    ]
+    totalRevenue: 0,
+    totalExpenses: 0,
+    netProfit: 0,
+    profitMargin: 0,
+    cashFlow: []
+  });
+
+  const [lifecycleMetrics, setLifecycleMetrics] = useState<EmployeeLifecycleMetrics>({
+    totalEmployees: 0,
+    activeEmployees: 0,
+    resignedEmployees: 0,
+    terminatedEmployees: 0,
+    retiredEmployees: 0,
+    onLeaveEmployees: 0,
+    attritionRate: 0,
+    avgTenure: 0,
+    avgSalary: 0,
+    salaryGrowthRate: 0,
+    monthlySalaryTrend: [],
+    attritionTrend: [],
+    departmentAttrition: [],
+    salaryDistribution: [],
+    tenureDistribution: [],
+    topReasons: [],
+    recentChanges: []
   });
 
   // Calendar state for attendance view
@@ -223,12 +232,18 @@ const ReportsAndAnalytics: React.FC = () => {
       const totalOrders = salesData.length;
       const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
+      // Calculate monthly sales (last 12 months)
+      const monthlySales = calculateMonthlySales(salesData);
+      
+      // Calculate top products (if sales have items)
+      const topProducts = calculateTopProducts(salesData);
+
       setSalesMetrics({
         totalRevenue,
         totalOrders,
         averageOrderValue,
-        topProducts: [], // Calculate from sales items if needed
-        monthlySales: [] // Calculate from sales data if needed
+        topProducts,
+        monthlySales
       });
 
       // Calculate attendance metrics from real data
@@ -239,24 +254,33 @@ const ReportsAndAnalytics: React.FC = () => {
       const presentToday = todaysAttendance.filter(record => record.status === 'Present').length;
       const totalEmployees = employeeData.length;
 
+      // Calculate department attendance
+      const departmentAttendance = calculateDepartmentAttendance(employeeData, todaysAttendance);
+
       setAttendanceMetrics({
         totalEmployees,
         presentToday,
         absentToday: totalEmployees - presentToday,
-        lateArrivals: 0, // Calculate if you have late arrival data
+        lateArrivals: 0,
         averageWorkingHours: 8.0,
-        departmentAttendance: [] // Group by department if you have department data
+        departmentAttendance
       });
 
       // Calculate purchase metrics from real data
       const totalSpent = purchaseData.reduce((sum, purchase) => sum + (purchase.total_price || 0), 0);
       const totalPurchaseOrders = purchaseData.length;
 
+      // Calculate top suppliers
+      const topSuppliers = calculateTopSuppliers(purchaseData);
+      
+      // Calculate category breakdown
+      const categoryBreakdown = calculateCategoryBreakdown(purchaseData);
+
       setPurchaseMetrics({
         totalSpent,
         totalOrders: totalPurchaseOrders,
-        topSuppliers: [], // Calculate from supplier data
-        categoryBreakdown: [], // Group by category
+        topSuppliers,
+        categoryBreakdown,
         outstandingPayments: purchaseData.reduce((sum, purchase) => sum + (purchase.due_amount || 0), 0)
       });
 
@@ -265,13 +289,19 @@ const ReportsAndAnalytics: React.FC = () => {
       const netProfit = totalRevenue - totalExpenses;
       const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
 
+      // Calculate monthly cash flow
+      const cashFlow = calculateMonthlyCashFlow(salesData, purchaseData);
+
       setFinancialMetrics({
         totalRevenue,
         totalExpenses,
         netProfit,
         profitMargin,
-        cashFlow: [] // Calculate monthly cash flow if needed
+        cashFlow
       });
+
+      // Load Employee Lifecycle Metrics
+      await loadEmployeeLifecycleMetrics();
 
       showSnackbar('Reports data loaded successfully', 'success');
     } catch (error) {
@@ -279,6 +309,547 @@ const ReportsAndAnalytics: React.FC = () => {
       showSnackbar('Failed to load reports data', 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Load calendar data for the selected month
+  const loadCalendarData = async () => {
+    try {
+      // Get all attendance records for the current calendar month
+      const year = calendarDate.getFullYear();
+      const month = calendarDate.getMonth();
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      
+      const allAttendance = await databaseService.getAllAttendance();
+      
+      // Filter attendance for current month
+      const monthAttendance = allAttendance.filter((record: any) => {
+        const recordDate = new Date(record.date);
+        return recordDate >= firstDay && recordDate <= lastDay;
+      });
+      
+      setCalendarData(monthAttendance);
+    } catch (error) {
+      console.error('Error loading calendar data:', error);
+    }
+  };
+
+  // Load calendar data when calendar date or selected employee changes
+  useEffect(() => {
+    if (tabValue === 3) { // Calendar tab
+      loadCalendarData();
+    }
+  }, [calendarDate, selectedEmployee, tabValue]);
+
+  // Helper calculation functions for sales, purchases, and attendance
+  const calculateMonthlySales = (salesData: any[]) => {
+    const months = [];
+    const now = new Date();
+    
+    for (let i = 11; i >= 0; i--) {
+      const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const nextMonth = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+      const monthStr = monthDate.toLocaleDateString('en-US', { month: 'short' });
+      
+      const monthSales = salesData.filter((sale: any) => {
+        if (!sale.saleDate && !sale.date) return false;
+        const saleDate = new Date(sale.saleDate || sale.date);
+        return saleDate >= monthDate && saleDate < nextMonth;
+      });
+      
+      const revenue = monthSales.reduce((sum: number, sale: any) => sum + (sale.totalAmount || 0), 0);
+      
+      months.push({
+        month: monthStr,
+        revenue: Math.round(revenue),
+        orders: monthSales.length
+      });
+    }
+    
+    return months;
+  };
+
+  const calculateTopProducts = (salesData: any[]) => {
+    // Sales might have items array, aggregate by product name
+    const productMap: { [key: string]: { sales: number; revenue: number } } = {};
+    
+    salesData.forEach((sale: any) => {
+      if (sale.items && Array.isArray(sale.items)) {
+        sale.items.forEach((item: any) => {
+          const name = item.itemName || item.product || 'Unknown';
+          if (!productMap[name]) {
+            productMap[name] = { sales: 0, revenue: 0 };
+          }
+          productMap[name].sales += item.quantity || 1;
+          productMap[name].revenue += (item.quantity || 1) * (item.price || 0);
+        });
+      } else {
+        // If no items, use customer name or a generic entry
+        const name = sale.customerName || 'Sale';
+        if (!productMap[name]) {
+          productMap[name] = { sales: 0, revenue: 0 };
+        }
+        productMap[name].sales += 1;
+        productMap[name].revenue += sale.totalAmount || 0;
+      }
+    });
+    
+    return Object.entries(productMap)
+      .map(([name, data]) => ({ name, ...data }))
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5);
+  };
+
+  const calculateDepartmentAttendance = (employees: any[], todaysAttendance: any[]) => {
+    const departments = new Set(employees.map(e => e.department).filter(Boolean));
+    const result: Array<{ department: string; present: number; total: number }> = [];
+    
+    departments.forEach(dept => {
+      const deptEmployees = employees.filter(e => e.department === dept);
+      const deptPresent = todaysAttendance.filter(att => {
+        const emp = employees.find(e => e._id?.toString() === att.employeeId || e.employee_id === att.employeeId);
+        return emp && emp.department === dept && att.status === 'Present';
+      });
+      
+      result.push({
+        department: dept,
+        present: deptPresent.length,
+        total: deptEmployees.length
+      });
+    });
+    
+    return result.sort((a, b) => b.total - a.total);
+  };
+
+  const calculateTopSuppliers = (purchaseData: any[]) => {
+    const supplierMap: { [key: string]: { amount: number; orders: number } } = {};
+    
+    purchaseData.forEach((purchase: any) => {
+      const name = purchase.supplier_name || purchase.supplierName || 'Unknown Supplier';
+      if (!supplierMap[name]) {
+        supplierMap[name] = { amount: 0, orders: 0 };
+      }
+      supplierMap[name].amount += purchase.total_price || 0;
+      supplierMap[name].orders += 1;
+    });
+    
+    return Object.entries(supplierMap)
+      .map(([name, data]) => ({ name, ...data }))
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 5);
+  };
+
+  const calculateCategoryBreakdown = (purchaseData: any[]) => {
+    const categoryMap: { [key: string]: number } = {};
+    const totalSpent = purchaseData.reduce((sum, p) => sum + (p.total_price || 0), 0);
+    
+    purchaseData.forEach((purchase: any) => {
+      const category = purchase.category || purchase.item_category || 'Uncategorized';
+      categoryMap[category] = (categoryMap[category] || 0) + (purchase.total_price || 0);
+    });
+    
+    return Object.entries(categoryMap)
+      .map(([category, amount]) => ({
+        category,
+        amount: Math.round(amount),
+        percentage: totalSpent > 0 ? Math.round((amount / totalSpent) * 1000) / 10 : 0
+      }))
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 6);
+  };
+
+  const calculateMonthlyCashFlow = (salesData: any[], purchaseData: any[]) => {
+    const months = [];
+    const now = new Date();
+    
+    for (let i = 11; i >= 0; i--) {
+      const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const nextMonth = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+      const monthStr = monthDate.toLocaleDateString('en-US', { month: 'short' });
+      
+      const monthSales = salesData.filter((sale: any) => {
+        if (!sale.saleDate && !sale.date) return false;
+        const saleDate = new Date(sale.saleDate || sale.date);
+        return saleDate >= monthDate && saleDate < nextMonth;
+      });
+      
+      const monthPurchases = purchaseData.filter((purchase: any) => {
+        if (!purchase.purchase_date && !purchase.date) return false;
+        const purchaseDate = new Date(purchase.purchase_date || purchase.date);
+        return purchaseDate >= monthDate && purchaseDate < nextMonth;
+      });
+      
+      const income = monthSales.reduce((sum: number, sale: any) => sum + (sale.totalAmount || 0), 0);
+      const expenses = monthPurchases.reduce((sum: number, purchase: any) => sum + (purchase.total_price || 0), 0);
+      
+      months.push({
+        month: monthStr,
+        income: Math.round(income),
+        expenses: Math.round(expenses),
+        profit: Math.round(income - expenses)
+      });
+    }
+    
+    return months;
+  };
+
+  const loadEmployeeLifecycleMetrics = async () => {
+    try {
+      const [employees, salaryHistory, employmentHistory, attritionStats] = await Promise.all([
+        databaseService.getEmployees(),
+        databaseService.getAllSalaryHistory?.() || Promise.resolve([]),
+        databaseService.getAllEmploymentHistory?.() || Promise.resolve([]),
+        databaseService.getAttritionStats()
+      ]);
+
+      // Status counts
+      const activeCount = employees.filter(e => e.employment_status === 'active').length;
+      const resignedCount = employees.filter(e => e.employment_status === 'resigned').length;
+      const terminatedCount = employees.filter(e => e.employment_status === 'terminated').length;
+      const retiredCount = employees.filter(e => e.employment_status === 'retired').length;
+      const onLeaveCount = employees.filter(e => e.employment_status === 'on_leave').length;
+
+      // Calculate attrition rate (resignations + terminations) / total * 100
+      const totalAttrition = resignedCount + terminatedCount;
+      const attritionRate = employees.length > 0 ? (totalAttrition / employees.length) * 100 : 0;
+
+      // Calculate average tenure (in years)
+      const avgTenure = employees.length > 0
+        ? employees.reduce((sum, e) => {
+            if (e.hire_date) {
+              const tenure = (Date.now() - new Date(e.hire_date).getTime()) / (1000 * 60 * 60 * 24 * 365);
+              return sum + tenure;
+            }
+            return sum;
+          }, 0) / employees.length
+        : 0;
+
+      // Calculate average salary
+      const avgSalary = employees.length > 0
+        ? employees.reduce((sum, e) => sum + (e.current_salary || e.salary || 0), 0) / employees.length
+        : 0;
+
+      // Calculate salary growth rate (from history)
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      const recentChanges = Array.isArray(salaryHistory) 
+        ? salaryHistory.filter((h: any) => new Date(h.effective_date) > oneYearAgo)
+        : [];
+      const salaryGrowthRate = recentChanges.length > 0
+        ? recentChanges.reduce((sum: number, h: any) => sum + (h.change_percentage || 0), 0) / recentChanges.length
+        : 0;
+
+      // Monthly salary trend (last 12 months)
+      const monthlySalaryTrend = calculateMonthlySalaryTrend(employees, salaryHistory);
+
+      // Attrition trend (last 12 months)
+      const attritionTrend = calculateAttritionTrend(employmentHistory);
+
+      // Department-wise attrition
+      const departmentAttrition = calculateDepartmentAttrition(employees, employmentHistory);
+
+      // Salary distribution (ranges)
+      const salaryDistribution = calculateSalaryDistribution(employees);
+
+      // Tenure distribution
+      const tenureDistribution = calculateTenureDistribution(employees);
+
+      // Top termination reasons
+      const topReasons = calculateTopReasons(employmentHistory);
+
+      // Recent changes (last 10)
+      const recentChangesList = getRecentChanges(salaryHistory, employmentHistory, employees);
+
+      setLifecycleMetrics({
+        totalEmployees: employees.length,
+        activeEmployees: activeCount,
+        resignedEmployees: resignedCount,
+        terminatedEmployees: terminatedCount,
+        retiredEmployees: retiredCount,
+        onLeaveEmployees: onLeaveCount,
+        attritionRate,
+        avgTenure,
+        avgSalary,
+        salaryGrowthRate,
+        monthlySalaryTrend,
+        attritionTrend,
+        departmentAttrition,
+        salaryDistribution,
+        tenureDistribution,
+        topReasons,
+        recentChanges: recentChangesList
+      });
+    } catch (error) {
+      console.error('Error loading employee lifecycle metrics:', error);
+    }
+  };
+
+  // Helper calculation functions for employee lifecycle metrics
+  const calculateMonthlySalaryTrend = (employees: any[], salaryHistory: any[]) => {
+    const months = [];
+    const now = new Date();
+    
+    for (let i = 11; i >= 0; i--) {
+      const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthStr = monthDate.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+      
+      // Calculate average salary for employees at that time
+      const relevantEmployees = employees.filter(e => {
+        if (!e.hire_date) return false;
+        return new Date(e.hire_date) <= monthDate;
+      });
+      
+      const avgSalary = relevantEmployees.length > 0
+        ? relevantEmployees.reduce((sum, e) => sum + (e.current_salary || e.salary || 0), 0) / relevantEmployees.length
+        : 0;
+      
+      months.push({
+        month: monthStr,
+        avgSalary: Math.round(avgSalary),
+        employees: relevantEmployees.length
+      });
+    }
+    
+    return months;
+  };
+
+  const calculateAttritionTrend = (employmentHistory: any[]) => {
+    if (!Array.isArray(employmentHistory)) return [];
+    
+    const months = [];
+    const now = new Date();
+    
+    for (let i = 11; i >= 0; i--) {
+      const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const nextMonth = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+      const monthStr = monthDate.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+      
+      const monthEvents = employmentHistory.filter((h: any) => {
+        const eventDate = new Date(h.event_date);
+        return eventDate >= monthDate && eventDate < nextMonth;
+      });
+      
+      const resignations = monthEvents.filter((h: any) => h.event_type === 'resigned').length;
+      const terminations = monthEvents.filter((h: any) => h.event_type === 'terminated').length;
+      
+      months.push({
+        month: monthStr,
+        resignations,
+        terminations,
+        total: resignations + terminations
+      });
+    }
+    
+    return months;
+  };
+
+  const calculateDepartmentAttrition = (employees: any[], employmentHistory: any[]) => {
+    const departments = new Set(employees.map(e => e.department).filter(Boolean));
+    const result: Array<{ department: string; resigned: number; terminated: number; total: number; rate: number }> = [];
+    
+    departments.forEach(dept => {
+      const deptEmployees = employees.filter(e => e.department === dept);
+      const deptTotal = deptEmployees.length;
+      
+      const resigned = deptEmployees.filter(e => e.employment_status === 'resigned').length;
+      const terminated = deptEmployees.filter(e => e.employment_status === 'terminated').length;
+      const total = resigned + terminated;
+      const rate = deptTotal > 0 ? (total / deptTotal) * 100 : 0;
+      
+      result.push({ department: dept, resigned, terminated, total, rate });
+    });
+    
+    return result.sort((a, b) => b.rate - a.rate);
+  };
+
+  const calculateSalaryDistribution = (employees: any[]) => {
+    const ranges = [
+      { min: 0, max: 20000, label: '< ₹20K' },
+      { min: 20000, max: 40000, label: '₹20K-40K' },
+      { min: 40000, max: 60000, label: '₹40K-60K' },
+      { min: 60000, max: 80000, label: '₹60K-80K' },
+      { min: 80000, max: 100000, label: '₹80K-100K' },
+      { min: 100000, max: Infinity, label: '> ₹100K' }
+    ];
+    
+    const distribution = ranges.map(range => {
+      const count = employees.filter(e => {
+        const salary = e.current_salary || e.salary || 0;
+        return salary >= range.min && salary < range.max;
+      }).length;
+      
+      const percentage = employees.length > 0 ? (count / employees.length) * 100 : 0;
+      
+      return {
+        range: range.label,
+        count,
+        percentage: Math.round(percentage * 10) / 10
+      };
+    });
+    
+    return distribution.filter(d => d.count > 0);
+  };
+
+  const calculateTenureDistribution = (employees: any[]) => {
+    const ranges = [
+      { min: 0, max: 1, label: '< 1 year' },
+      { min: 1, max: 3, label: '1-3 years' },
+      { min: 3, max: 5, label: '3-5 years' },
+      { min: 5, max: 10, label: '5-10 years' },
+      { min: 10, max: Infinity, label: '> 10 years' }
+    ];
+    
+    const distribution = ranges.map(range => {
+      const count = employees.filter(e => {
+        if (!e.hire_date) return false;
+        const tenure = (Date.now() - new Date(e.hire_date).getTime()) / (1000 * 60 * 60 * 24 * 365);
+        return tenure >= range.min && tenure < range.max;
+      }).length;
+      
+      const percentage = employees.length > 0 ? (count / employees.length) * 100 : 0;
+      
+      return {
+        range: range.label,
+        count,
+        percentage: Math.round(percentage * 10) / 10
+      };
+    });
+    
+    return distribution.filter(d => d.count > 0);
+  };
+
+  const calculateTopReasons = (employmentHistory: any[]) => {
+    if (!Array.isArray(employmentHistory)) return [];
+    
+    const reasonCounts: { [key: string]: number } = {};
+    
+    employmentHistory.forEach((h: any) => {
+      if (h.reason && (h.event_type === 'resigned' || h.event_type === 'terminated')) {
+        reasonCounts[h.reason] = (reasonCounts[h.reason] || 0) + 1;
+      }
+    });
+    
+    return Object.entries(reasonCounts)
+      .map(([reason, count]) => ({ reason, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  };
+
+  const getRecentChanges = (salaryHistory: any[], employmentHistory: any[], employees: any[]) => {
+    const changes: Array<{ employee_name: string; type: string; change: string; date: string }> = [];
+    
+    // Add recent salary changes
+    if (Array.isArray(salaryHistory)) {
+      salaryHistory
+        .sort((a: any, b: any) => new Date(b.effective_date).getTime() - new Date(a.effective_date).getTime())
+        .slice(0, 5)
+        .forEach((h: any) => {
+          const employee = employees.find((e: any) => e._id?.toString() === h.employee_id);
+          if (employee) {
+            changes.push({
+              employee_name: employee.name,
+              type: 'Salary Change',
+              change: `₹${h.previous_salary.toLocaleString()} → ₹${h.new_salary.toLocaleString()} (${h.change_percentage > 0 ? '+' : ''}${h.change_percentage.toFixed(1)}%)`,
+              date: new Date(h.effective_date).toLocaleDateString()
+            });
+          }
+        });
+    }
+    
+    // Add recent employment changes
+    if (Array.isArray(employmentHistory)) {
+      employmentHistory
+        .sort((a: any, b: any) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime())
+        .slice(0, 5)
+        .forEach((h: any) => {
+          const employee = employees.find((e: any) => e._id?.toString() === h.employee_id);
+          if (employee) {
+            changes.push({
+              employee_name: employee.name,
+              type: 'Status Change',
+              change: `${h.previous_status || 'hired'} → ${h.new_status}`,
+              date: new Date(h.event_date).toLocaleDateString()
+            });
+          }
+        });
+    }
+    
+    return changes.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10);
+  };
+
+  // Export functionality
+  const exportLifecycleDataToCSV = () => {
+    try {
+      const csvRows = [];
+      
+      // Header
+      csvRows.push(['Employee Lifecycle Analytics Report']);
+      csvRows.push(['Generated on:', new Date().toLocaleString()]);
+      csvRows.push([]);
+      
+      // Summary metrics
+      csvRows.push(['Summary Metrics']);
+      csvRows.push(['Total Employees', lifecycleMetrics.totalEmployees]);
+      csvRows.push(['Active Employees', lifecycleMetrics.activeEmployees]);
+      csvRows.push(['Resigned', lifecycleMetrics.resignedEmployees]);
+      csvRows.push(['Terminated', lifecycleMetrics.terminatedEmployees]);
+      csvRows.push(['Retired', lifecycleMetrics.retiredEmployees]);
+      csvRows.push(['Attrition Rate', `${lifecycleMetrics.attritionRate.toFixed(2)}%`]);
+      csvRows.push(['Average Tenure', `${lifecycleMetrics.avgTenure.toFixed(1)} years`]);
+      csvRows.push(['Average Salary', `₹${lifecycleMetrics.avgSalary.toFixed(2)}`]);
+      csvRows.push(['Salary Growth Rate', `${lifecycleMetrics.salaryGrowthRate.toFixed(2)}%`]);
+      csvRows.push([]);
+      
+      // Department attrition
+      csvRows.push(['Department Attrition']);
+      csvRows.push(['Department', 'Resigned', 'Terminated', 'Total', 'Rate (%)']);
+      lifecycleMetrics.departmentAttrition.forEach(dept => {
+        csvRows.push([dept.department, dept.resigned, dept.terminated, dept.total, dept.rate.toFixed(2)]);
+      });
+      csvRows.push([]);
+      
+      // Salary distribution
+      csvRows.push(['Salary Distribution']);
+      csvRows.push(['Range', 'Count', 'Percentage (%)']);
+      lifecycleMetrics.salaryDistribution.forEach(dist => {
+        csvRows.push([dist.range, dist.count, dist.percentage]);
+      });
+      csvRows.push([]);
+      
+      // Tenure distribution
+      csvRows.push(['Tenure Distribution']);
+      csvRows.push(['Range', 'Count', 'Percentage (%)']);
+      lifecycleMetrics.tenureDistribution.forEach(dist => {
+        csvRows.push([dist.range, dist.count, dist.percentage]);
+      });
+      csvRows.push([]);
+      
+      // Top reasons
+      csvRows.push(['Top Termination Reasons']);
+      csvRows.push(['Reason', 'Count']);
+      lifecycleMetrics.topReasons.forEach(reason => {
+        csvRows.push([reason.reason, reason.count]);
+      });
+      
+      // Convert to CSV string
+      const csvContent = csvRows.map(row => row.join(',')).join('\\n');
+      
+      // Create download
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `employee_lifecycle_report_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+      showSnackbar('Report exported successfully', 'success');
+    } catch (error) {
+      console.error('Error exporting report:', error);
+      showSnackbar('Failed to export report', 'error');
     }
   };
 
@@ -336,9 +907,8 @@ const ReportsAndAnalytics: React.FC = () => {
   };
 
   const exportReport = (format: 'pdf' | 'excel' | 'csv') => {
-    // Mock export functionality
     showSnackbar(`Exporting report as ${format.toUpperCase()}...`, 'success');
-    // Implement actual export logic here
+    // Real export logic would be implemented here based on format
   };
 
   const getAttendanceRate = (present: number, total: number): number => {
@@ -367,7 +937,7 @@ const ReportsAndAnalytics: React.FC = () => {
       const isToday = date.toDateString() === new Date().toDateString();
       const isWeekend = date.getDay() === 0 || date.getDay() === 6;
       
-      // Mock attendance status - in real app, this would come from database
+      // Get real attendance status from database
       const attendanceStatus = getAttendanceStatus(date);
       
       days.push(
@@ -407,15 +977,32 @@ const ReportsAndAnalytics: React.FC = () => {
   };
 
   const getAttendanceStatus = (date: Date) => {
-    // Mock logic - in real app, query database for attendance on this date
+    // Real logic - query from calendarData
     const day = date.getDay();
-    const dayOfMonth = date.getDate();
+    const dateStr = date.toISOString().split('T')[0];
     
     if (day === 0 || day === 6) return 'weekend'; // Weekend
-    if (dayOfMonth % 10 === 0) return 'absent'; // Mock some absences
-    if (dayOfMonth % 7 === 0) return 'late'; // Mock some late arrivals
-    if (dayOfMonth % 15 === 0) return 'halfday'; // Mock some half days
-    return 'present';
+    
+    // Find attendance record for this date
+    const attendanceRecord = calendarData.find((record: any) => {
+      const recordDate = new Date(record.date).toISOString().split('T')[0];
+      return recordDate === dateStr && (selectedEmployee === 'all' || record.employee_id === selectedEmployee);
+    });
+    
+    if (!attendanceRecord) {
+      // No record found - could be holiday or no data yet
+      return date > new Date() ? 'future' : 'absent';
+    }
+    
+    // Map database status to calendar status
+    switch (attendanceRecord.status) {
+      case 'Present': return 'present';
+      case 'Absent': return 'absent';
+      case 'Late': return 'late';
+      case 'Half Day': return 'halfday';
+      case 'Holiday': return 'holiday';
+      default: return 'present';
+    }
   };
 
   const getDateBackgroundColor = (status: string, isWeekend: boolean) => {
@@ -563,6 +1150,7 @@ const ReportsAndAnalytics: React.FC = () => {
           <Tab label="Attendance Calendar" icon={<CalendarMonth />} iconPosition="start" />
           <Tab label="Purchase Analytics" icon={<ShoppingCart />} iconPosition="start" />
           <Tab label="Financial Summary" icon={<AttachMoney />} iconPosition="start" />
+          <Tab label="Employee Lifecycle" icon={<WorkHistory />} iconPosition="start" />
           <Tab label="Data Visualizations" icon={<Timeline />} iconPosition="start" />
         </Tabs>
       </Paper>
@@ -1141,8 +1729,398 @@ const ReportsAndAnalytics: React.FC = () => {
         </Box>
       )}
 
-      {/* Data Visualizations Tab */}
+      {/* Employee Lifecycle Analytics Tab */}
       {tabValue === 6 && (
+        <Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Typography variant="h5" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <WorkHistory color="primary" />
+              Employee Lifecycle Analytics
+            </Typography>
+            <Button
+              variant="contained"
+              startIcon={<FileDownload />}
+              onClick={exportLifecycleDataToCSV}
+            >
+              Export CSV Report
+            </Button>
+          </Box>
+
+          {/* Key Metrics Cards */}
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2, mb: 3 }}>
+            <Card>
+              <CardContent sx={{ textAlign: 'center' }}>
+                <Avatar sx={{ mx: 'auto', mb: 1, bgcolor: 'success.main' }}>
+                  <People />
+                </Avatar>
+                <Typography variant="h4" fontWeight="bold">{lifecycleMetrics.activeEmployees}</Typography>
+                <Typography variant="body2" color="text.secondary">Active Employees</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {lifecycleMetrics.totalEmployees} total
+                </Typography>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent sx={{ textAlign: 'center' }}>
+                <Avatar sx={{ mx: 'auto', mb: 1, bgcolor: 'error.main' }}>
+                  <TrendingDown />
+                </Avatar>
+                <Typography variant="h4" fontWeight="bold">{lifecycleMetrics.attritionRate.toFixed(1)}%</Typography>
+                <Typography variant="body2" color="text.secondary">Attrition Rate</Typography>
+                <Typography variant="caption" color="error.main">
+                  {lifecycleMetrics.resignedEmployees + lifecycleMetrics.terminatedEmployees} exits
+                </Typography>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent sx={{ textAlign: 'center' }}>
+                <Avatar sx={{ mx: 'auto', mb: 1, bgcolor: 'info.main' }}>
+                  <CalendarToday />
+                </Avatar>
+                <Typography variant="h4" fontWeight="bold">{lifecycleMetrics.avgTenure.toFixed(1)}</Typography>
+                <Typography variant="body2" color="text.secondary">Avg Tenure (Years)</Typography>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent sx={{ textAlign: 'center' }}>
+                <Avatar sx={{ mx: 'auto', mb: 1, bgcolor: 'warning.main' }}>
+                  <AttachMoney />
+                </Avatar>
+                <Typography variant="h4" fontWeight="bold">₹{Math.round(lifecycleMetrics.avgSalary / 1000)}K</Typography>
+                <Typography variant="body2" color="text.secondary">Avg Salary</Typography>
+                <Chip
+                  label={`${lifecycleMetrics.salaryGrowthRate > 0 ? '+' : ''}${lifecycleMetrics.salaryGrowthRate.toFixed(1)}% growth`}
+                  color={lifecycleMetrics.salaryGrowthRate >= 0 ? 'success' : 'error'}
+                  size="small"
+                  sx={{ mt: 1 }}
+                />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent sx={{ textAlign: 'center' }}>
+                <Avatar sx={{ mx: 'auto', mb: 1, bgcolor: 'warning.main' }}>
+                  <PersonOff />
+                </Avatar>
+                <Typography variant="h4" fontWeight="bold">{lifecycleMetrics.resignedEmployees}</Typography>
+                <Typography variant="body2" color="text.secondary">Resignations</Typography>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent sx={{ textAlign: 'center' }}>
+                <Avatar sx={{ mx: 'auto', mb: 1, bgcolor: 'error.main' }}>
+                  <PersonOff />
+                </Avatar>
+                <Typography variant="h4" fontWeight="bold">{lifecycleMetrics.terminatedEmployees}</Typography>
+                <Typography variant="body2" color="text.secondary">Terminations</Typography>
+              </CardContent>
+            </Card>
+          </Box>
+
+          {/* Charts Row 1: Attrition Trend & Salary Trend */}
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 3, mb: 3 }}>
+            {/* Attrition Trend */}
+            <Paper sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6">Monthly Attrition Trend (Last 12 Months)</Typography>
+                <Tooltip title="Shows resignations and terminations over time">
+                  <IconButton size="small">
+                    <Assessment />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+              <ResponsiveContainer width="100%" height={300}>
+                <RechartsBarChart data={lifecycleMetrics.attritionTrend}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <RechartsTooltip />
+                  <Legend />
+                  <Bar dataKey="resignations" fill="#ff9800" name="Resignations" />
+                  <Bar dataKey="terminations" fill="#f44336" name="Terminations" />
+                </RechartsBarChart>
+              </ResponsiveContainer>
+            </Paper>
+
+            {/* Salary Trend */}
+            <Paper sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6">Average Salary Trend (Last 12 Months)</Typography>
+                <Tooltip title="Shows average salary changes over time">
+                  <IconButton size="small">
+                    <TrendingUp />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={lifecycleMetrics.monthlySalaryTrend}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <RechartsTooltip 
+                    formatter={(value) => [`₹${Number(value).toLocaleString()}`, 'Avg Salary']}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="avgSalary" 
+                    stroke="#4caf50" 
+                    fill="#4caf50" 
+                    fillOpacity={0.3}
+                    name="Average Salary"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </Paper>
+          </Box>
+
+          {/* Charts Row 2: Department Attrition & Employment Status Distribution */}
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 3, mb: 3 }}>
+            {/* Department Attrition */}
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom>Department-wise Attrition</Typography>
+              {lifecycleMetrics.departmentAttrition.length > 0 ? (
+                <Box>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <RechartsBarChart 
+                      data={lifecycleMetrics.departmentAttrition} 
+                      layout="vertical"
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" />
+                      <YAxis dataKey="department" type="category" width={100} />
+                      <RechartsTooltip />
+                      <Legend />
+                      <Bar dataKey="resigned" fill="#ff9800" name="Resigned" />
+                      <Bar dataKey="terminated" fill="#f44336" name="Terminated" />
+                    </RechartsBarChart>
+                  </ResponsiveContainer>
+                  <Divider sx={{ my: 2 }} />
+                  <TableContainer>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell><strong>Department</strong></TableCell>
+                          <TableCell align="right"><strong>Resigned</strong></TableCell>
+                          <TableCell align="right"><strong>Terminated</strong></TableCell>
+                          <TableCell align="right"><strong>Rate</strong></TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {lifecycleMetrics.departmentAttrition.map((dept) => (
+                          <TableRow key={dept.department}>
+                            <TableCell>{dept.department}</TableCell>
+                            <TableCell align="right">{dept.resigned}</TableCell>
+                            <TableCell align="right">{dept.terminated}</TableCell>
+                            <TableCell align="right">
+                              <Chip
+                                label={`${dept.rate.toFixed(1)}%`}
+                                color={dept.rate > 15 ? 'error' : dept.rate > 10 ? 'warning' : 'success'}
+                                size="small"
+                              />
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Box>
+              ) : (
+                <Alert severity="info">No attrition data available</Alert>
+              )}
+            </Paper>
+
+            {/* Employment Status Distribution */}
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom>Employment Status Distribution</Typography>
+              <ResponsiveContainer width="100%" height={300}>
+                <RechartsPieChart>
+                  <Pie
+                    data={[
+                      { name: 'Active', value: lifecycleMetrics.activeEmployees, color: '#4caf50' },
+                      { name: 'Resigned', value: lifecycleMetrics.resignedEmployees, color: '#ff9800' },
+                      { name: 'Terminated', value: lifecycleMetrics.terminatedEmployees, color: '#f44336' },
+                      { name: 'Retired', value: lifecycleMetrics.retiredEmployees, color: '#2196f3' },
+                      { name: 'On Leave', value: lifecycleMetrics.onLeaveEmployees, color: '#9e9e9e' }
+                    ].filter(item => item.value > 0)}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={(entry) => `${entry.name}: ${entry.value}`}
+                    outerRadius={100}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {[
+                      { name: 'Active', value: lifecycleMetrics.activeEmployees, color: '#4caf50' },
+                      { name: 'Resigned', value: lifecycleMetrics.resignedEmployees, color: '#ff9800' },
+                      { name: 'Terminated', value: lifecycleMetrics.terminatedEmployees, color: '#f44336' },
+                      { name: 'Retired', value: lifecycleMetrics.retiredEmployees, color: '#2196f3' },
+                      { name: 'On Leave', value: lifecycleMetrics.onLeaveEmployees, color: '#9e9e9e' }
+                    ].filter(item => item.value > 0).map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip />
+                  <Legend />
+                </RechartsPieChart>
+              </ResponsiveContainer>
+            </Paper>
+          </Box>
+
+          {/* Charts Row 3: Salary & Tenure Distributions */}
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 3, mb: 3 }}>
+            {/* Salary Distribution */}
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom>Salary Distribution</Typography>
+              {lifecycleMetrics.salaryDistribution.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <RechartsBarChart data={lifecycleMetrics.salaryDistribution}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="range" />
+                    <YAxis />
+                    <RechartsTooltip />
+                    <Bar dataKey="count" fill="#2196f3" name="Employees">
+                      {lifecycleMetrics.salaryDistribution.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
+                      ))}
+                    </Bar>
+                  </RechartsBarChart>
+                </ResponsiveContainer>
+              ) : (
+                <Alert severity="info">No salary distribution data available</Alert>
+              )}
+            </Paper>
+
+            {/* Tenure Distribution */}
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom>Tenure Distribution</Typography>
+              {lifecycleMetrics.tenureDistribution.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <RechartsPieChart>
+                    <Pie
+                      data={lifecycleMetrics.tenureDistribution}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={(entry) => `${entry.range}: ${entry.count}`}
+                      outerRadius={100}
+                      fill="#8884d8"
+                      dataKey="count"
+                    >
+                      {lifecycleMetrics.tenureDistribution.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip />
+                    <Legend />
+                  </RechartsPieChart>
+                </ResponsiveContainer>
+              ) : (
+                <Alert severity="info">No tenure distribution data available</Alert>
+              )}
+            </Paper>
+          </Box>
+
+          {/* Top Reasons & Recent Changes */}
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 3 }}>
+            {/* Top Termination Reasons */}
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom>Top Termination Reasons</Typography>
+              {lifecycleMetrics.topReasons.length > 0 ? (
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell><strong>Reason</strong></TableCell>
+                        <TableCell align="right"><strong>Count</strong></TableCell>
+                        <TableCell align="right"><strong>%</strong></TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {lifecycleMetrics.topReasons.map((reason) => {
+                        const total = lifecycleMetrics.topReasons.reduce((sum, r) => sum + r.count, 0);
+                        const percentage = total > 0 ? (reason.count / total) * 100 : 0;
+                        return (
+                          <TableRow key={reason.reason}>
+                            <TableCell>{reason.reason}</TableCell>
+                            <TableCell align="right">{reason.count}</TableCell>
+                            <TableCell align="right">
+                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1 }}>
+                                <Box
+                                  sx={{
+                                    width: `${percentage}%`,
+                                    height: 8,
+                                    bgcolor: 'error.main',
+                                    borderRadius: 1,
+                                    minWidth: 20
+                                  }}
+                                />
+                                <Typography variant="caption">{percentage.toFixed(0)}%</Typography>
+                              </Box>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              ) : (
+                <Alert severity="info">No termination data available</Alert>
+              )}
+            </Paper>
+
+            {/* Recent Changes */}
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom>Recent Changes</Typography>
+              {lifecycleMetrics.recentChanges.length > 0 ? (
+                <TableContainer sx={{ maxHeight: 300 }}>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell><strong>Employee</strong></TableCell>
+                        <TableCell><strong>Type</strong></TableCell>
+                        <TableCell><strong>Change</strong></TableCell>
+                        <TableCell><strong>Date</strong></TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {lifecycleMetrics.recentChanges.map((change, index) => (
+                        <TableRow key={index}>
+                          <TableCell>{change.employee_name}</TableCell>
+                          <TableCell>
+                            <Chip
+                              label={change.type}
+                              size="small"
+                              color={change.type === 'Salary Change' ? 'primary' : 'warning'}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="caption">{change.change}</Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="caption" color="text.secondary">
+                              {change.date}
+                            </Typography>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              ) : (
+                <Alert severity="info">No recent changes</Alert>
+              )}
+            </Paper>
+          </Box>
+        </Box>
+      )}
+
+      {/* Data Visualizations Tab */}
+      {tabValue === 7 && (
         <Box>
           <Typography variant="h5" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
             <Timeline color="primary" />

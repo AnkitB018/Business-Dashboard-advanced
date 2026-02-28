@@ -39,22 +39,51 @@ import {
   Refresh as RefreshIcon,
   Download as DownloadIcon,
   Upload as UploadIcon,
-  Person as PersonIcon
+  Person as PersonIcon,
+  TrendingUp as TrendingUpIcon,
+  PersonOff as PersonOffIcon,
+  History as HistoryIcon
 } from '@mui/icons-material';
 import { Employee } from '../types/Employee';
 import databaseService from '../services/DatabaseService';
 import { validateEmployee } from '../utils/validation';
+import SalaryChangeDialog from './SalaryChangeDialog';
+import EmploymentStatusDialog from './EmploymentStatusDialog';
+import SalaryHistoryDialog from './SalaryHistoryDialog';
+import EmploymentHistoryDialog from './EmploymentHistoryDialog';
 
 interface EmployeeManagementProps {
   // Props can be added here if needed
 }
 
+// Helper function to extract MongoDB ObjectId as hex string
+const extractObjectId = (id: any): string => {
+  if (!id) throw new Error('ID is required');
+  
+  if (typeof id === 'string') {
+    return id;
+  } else if (id.$oid) {
+    // MongoDB Extended JSON format { $oid: "..." }
+    return id.$oid;
+  } else if (id.buffer) {
+    // BSON ObjectId with buffer property (Uint8Array of 12 bytes)
+    const buffer = id.buffer;
+    const bytes = Object.values(buffer) as number[];
+    return bytes.map((b: number) => b.toString(16).padStart(2, '0')).join('');
+  } else if (id.toHexString) {
+    // BSON ObjectId with toHexString method
+    return id.toHexString();
+  } else {
+    throw new Error('Invalid ID format');
+  }
+};
+
 const EmployeeManagement: React.FC<EmployeeManagementProps> = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [departmentFilter, setDepartmentFilter] = useState('');
   const [positionFilter, setPositionFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [deleteEmployee, setDeleteEmployee] = useState<Employee | null>(null);
@@ -63,6 +92,12 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = () => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  
+  // New dialog states
+  const [salaryChangeDialog, setSalaryChangeDialog] = useState<{ open: boolean; employee: Employee | null }>({ open: false, employee: null });
+  const [statusChangeDialog, setStatusChangeDialog] = useState<{ open: boolean; employee: Employee | null }>({ open: false, employee: null });
+  const [salaryHistoryDialog, setSalaryHistoryDialog] = useState<{ open: boolean; employee: Employee | null }>({ open: false, employee: null });
+  const [employmentHistoryDialog, setEmploymentHistoryDialog] = useState<{ open: boolean; employee: Employee | null }>({ open: false, employee: null });
 
   const dbService = databaseService;
 
@@ -111,8 +146,11 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = () => {
       const employeeData: Employee = {
         ...formData,
         hire_date: formData.hire_date || new Date(),
-        salary: formData.salary || 0,
-        is_active: formData.is_active !== undefined ? formData.is_active : true,
+        current_salary: formData.current_salary || 0,
+        employment_status: formData.employment_status || 'active',
+        // Keep backward compatibility
+        salary: formData.current_salary || formData.salary || 0,
+        is_active: formData.employment_status === 'active',
         created_date: new Date(),
         last_modified: new Date()
       } as Employee;
@@ -120,7 +158,8 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = () => {
       if (editingEmployee) {
         // Update existing employee
         try {
-          await dbService.updateEmployee(editingEmployee._id!, employeeData);
+          const employeeId = extractObjectId(editingEmployee._id);
+          await dbService.updateEmployee(employeeId, employeeData);
           showSnackbar('Employee updated successfully', 'success');
           handleCloseDialog();
           loadEmployees();
@@ -150,21 +189,15 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = () => {
 
     setLoading(true);
     try {
-      // Convert ObjectId to string for database operation
-      const employeeData = deleteEmployee as any;
-      const employeeId = employeeData._id ? 
-        (typeof employeeData._id === 'object' ? JSON.stringify(employeeData._id) : employeeData._id.toString()) 
-        : '';
-      
-      if (!employeeId) {
-        throw new Error('Invalid employee ID');
-      }
+      const employeeId = extractObjectId(deleteEmployee._id);
+      console.log('Deleting employee with ID:', employeeId);
       
       await dbService.deleteEmployee(employeeId);
       showSnackbar('Employee deleted successfully', 'success');
       setDeleteEmployee(null);
       loadEmployees();
     } catch (error) {
+      console.error('Delete error:', error);
       showSnackbar(error instanceof Error ? error.message : 'Failed to delete employee', 'error');
     } finally {
       setLoading(false);
@@ -173,14 +206,12 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = () => {
 
   const handleOpenAddDialog = () => {
     setFormData({
-      emp_id: '',
+      employee_id: '',
       name: '',
-      department: '',
       position: '',
-      email: '',
       phone: '',
-      salary: 0,
-      is_active: true
+      current_salary: 0,
+      employment_status: 'active'
     });
     setFormErrors({});
     setEditingEmployee(null);
@@ -220,17 +251,15 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = () => {
   const filteredEmployees = employees.filter(employee => {
     const matchesSearch = !searchTerm || 
       employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.emp_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.email.toLowerCase().includes(searchTerm.toLowerCase());
+      employee.employee_id.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesDepartment = !departmentFilter || employee.department === departmentFilter;
     const matchesPosition = !positionFilter || employee.position === positionFilter;
+    const matchesStatus = statusFilter === 'all' || employee.employment_status === statusFilter;
     
-    return matchesSearch && matchesDepartment && matchesPosition;
+    return matchesSearch && matchesPosition && matchesStatus;
   });
 
-  // Get unique departments and positions for filters
-  const departments = Array.from(new Set(employees.map(emp => emp.department).filter(Boolean)));
+  // Get unique positions for filters
   const positions = Array.from(new Set(employees.map(emp => emp.position).filter(Boolean)));
 
   const paginatedEmployees = filteredEmployees.slice(
@@ -269,17 +298,7 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = () => {
               Active Employees
             </Typography>
             <Typography variant="h4" color="success.main">
-              {employees.filter(emp => emp.is_active).length}
-            </Typography>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent>
-            <Typography color="textSecondary" gutterBottom>
-              Departments
-            </Typography>
-            <Typography variant="h4" color="warning.main">
-              {departments.length}
+              {employees.filter(emp => emp.employment_status === 'active').length}
             </Typography>
           </CardContent>
         </Card>
@@ -289,7 +308,7 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = () => {
               Average Salary
             </Typography>
             <Typography variant="h4" color="info.main">
-              ₹{employees.length > 0 ? Math.round(employees.reduce((sum, emp) => sum + (emp.salary || 0), 0) / employees.length) : 0}
+              ₹{employees.length > 0 ? Math.round(employees.reduce((sum, emp) => sum + (emp.current_salary || emp.salary || 0), 0) / employees.length).toLocaleString() : 0}
             </Typography>
           </CardContent>
         </Card>
@@ -309,22 +328,7 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = () => {
                   <SearchIcon />
                 </InputAdornment>
               ),
-            }}
-          />
-          
-          <FormControl sx={{ minWidth: 200 }}>
-            <InputLabel>Department</InputLabel>
-            <Select
-              value={departmentFilter}
-              label="Department"
-              onChange={(e) => setDepartmentFilter(e.target.value)}
-            >
-              <MenuItem value="">All Departments</MenuItem>
-              {departments.map(dept => (
-                <MenuItem key={dept} value={dept}>{dept}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+            }}          />
           
           <FormControl sx={{ minWidth: 200 }}>
             <InputLabel>Position</InputLabel>
@@ -337,6 +341,22 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = () => {
               {positions.map(pos => (
                 <MenuItem key={pos} value={pos}>{pos}</MenuItem>
               ))}
+            </Select>
+          </FormControl>
+          
+          <FormControl sx={{ minWidth: 200 }}>
+            <InputLabel>Employment Status</InputLabel>
+            <Select
+              value={statusFilter}
+              label="Employment Status"
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <MenuItem value="all">All Statuses</MenuItem>
+              <MenuItem value="active">Active</MenuItem>
+              <MenuItem value="resigned">Resigned</MenuItem>
+              <MenuItem value="terminated">Terminated</MenuItem>
+              <MenuItem value="retired">Retired</MenuItem>
+              <MenuItem value="on_leave">On Leave</MenuItem>
             </Select>
           </FormControl>
           
@@ -368,11 +388,9 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = () => {
               <TableRow>
                 <TableCell>Employee ID</TableCell>
                 <TableCell>Name</TableCell>
-                <TableCell>Department</TableCell>
                 <TableCell>Position</TableCell>
-                <TableCell>Email</TableCell>
                 <TableCell>Phone</TableCell>
-                <TableCell>Salary</TableCell>
+                <TableCell>Current Salary</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>Actions</TableCell>
               </TableRow>
@@ -383,32 +401,71 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = () => {
                 // Handle ObjectId properly - convert to string
                 const employeeKey = employeeData._id ? 
                   (typeof employeeData._id === 'object' ? JSON.stringify(employeeData._id) : employeeData._id.toString()) 
-                  : (employeeData.emp_id || `employee-${index}`);
+                  : (employeeData.employee_id || `employee-${index}`);
                 
                 return (
                 <TableRow key={employeeKey} hover>
-                  <TableCell>{employeeData.employee_id || employeeData.emp_id || 'N/A'}</TableCell>
+                  <TableCell>{employeeData.employee_id || 'N/A'}</TableCell>
                   <TableCell>{employeeData.name || 'N/A'}</TableCell>
-                  <TableCell>{employeeData.department || 'N/A'}</TableCell>
                   <TableCell>{employeeData.position || 'N/A'}</TableCell>
-                  <TableCell>{employeeData.email || 'N/A'}</TableCell>
                   <TableCell>{employeeData.phone || 'N/A'}</TableCell>
-                  <TableCell>₹{(employeeData.daily_wage || employeeData.salary || 0).toLocaleString()}</TableCell>
+                  <TableCell>₹{(employeeData.current_salary || employeeData.salary || 0).toLocaleString()}</TableCell>
                   <TableCell>
                     <Chip
-                      label={employeeData.status === 'active' ? 'Active' : (employeeData.is_active ? 'Active' : 'Inactive')}
-                      color={(employeeData.status === 'active' || employeeData.is_active) ? 'success' : 'default'}
+                      label={(employeeData.employment_status || 'active').toUpperCase()}
+                      color={
+                        employeeData.employment_status === 'active' ? 'success' : 
+                        employeeData.employment_status === 'resigned' ? 'warning' :
+                        employeeData.employment_status === 'terminated' ? 'error' :
+                        employeeData.employment_status === 'retired' ? 'info' : 'default'
+                      }
                       size="small"
                     />
                   </TableCell>
                   <TableCell>
-                    <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
                       <Tooltip title="Edit">
                         <IconButton
                           size="small"
                           onClick={() => handleOpenEditDialog(employee)}
                         >
-                          <EditIcon />
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Salary Change">
+                        <IconButton
+                          size="small"
+                          onClick={() => setSalaryChangeDialog({ open: true, employee })}
+                          color="primary"
+                        >
+                          <TrendingUpIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Change Status">
+                        <IconButton
+                          size="small"
+                          onClick={() => setStatusChangeDialog({ open: true, employee })}
+                          color="warning"
+                        >
+                          <PersonOffIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Salary History">
+                        <IconButton
+                          size="small"
+                          onClick={() => setSalaryHistoryDialog({ open: true, employee })}
+                          color="info"
+                        >
+                          <HistoryIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Employment History">
+                        <IconButton
+                          size="small"
+                          onClick={() => setEmploymentHistoryDialog({ open: true, employee })}
+                          color="secondary"
+                        >
+                          <HistoryIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Delete">
@@ -417,7 +474,7 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = () => {
                           onClick={() => setDeleteEmployee(employee)}
                           color="error"
                         >
-                          <DeleteIcon />
+                          <DeleteIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
                     </Box>
@@ -457,10 +514,10 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = () => {
             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 2 }}>
               <TextField
                 label="Employee ID"
-                value={formData.emp_id || ''}
-                onChange={handleFormChange('emp_id')}
-                error={!!formErrors.emp_id}
-                helperText={formErrors.emp_id}
+                value={formData.employee_id || ''}
+                onChange={handleFormChange('employee_id')}
+                error={!!formErrors.employee_id}
+                helperText={formErrors.employee_id}
                 required
               />
               <TextField
@@ -475,31 +532,11 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = () => {
             
             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 2 }}>
               <TextField
-                label="Department"
-                value={formData.department || ''}
-                onChange={handleFormChange('department')}
-                error={!!formErrors.department}
-                helperText={formErrors.department}
-                required
-              />
-              <TextField
                 label="Position"
                 value={formData.position || ''}
                 onChange={handleFormChange('position')}
                 error={!!formErrors.position}
                 helperText={formErrors.position}
-                required
-              />
-            </Box>
-            
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 2 }}>
-              <TextField
-                label="Email"
-                type="email"
-                value={formData.email || ''}
-                onChange={handleFormChange('email')}
-                error={!!formErrors.email}
-                helperText={formErrors.email}
                 required
               />
               <TextField
@@ -513,17 +550,19 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = () => {
             </Box>
             
             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 2 }}>
-              <TextField
-                label="Salary"
-                type="number"
-                value={formData.salary || ''}
-                onChange={handleFormChange('salary')}
-                error={!!formErrors.salary}
-                helperText={formErrors.salary}
-                InputProps={{
-                  startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-                }}
-              />
+              {!editingEmployee && (
+                <TextField
+                  label="Initial Salary"
+                  type="number"
+                  value={formData.current_salary || ''}
+                  onChange={handleFormChange('current_salary')}
+                  error={!!formErrors.current_salary}
+                  helperText={editingEmployee ? 'Use Salary Change action to modify salary' : formErrors.current_salary}
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                  }}
+                />
+              )}
               <TextField
                 label="Hire Date"
                 type="date"
@@ -534,6 +573,14 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = () => {
                 }}
               />
             </Box>
+            
+            {editingEmployee && (
+              <Alert severity="info" sx={{ mt: 1 }}>
+                <Typography variant="body2">
+                  <strong>Note:</strong> To change salary, use the "Salary Change" action button in the employee table.
+                </Typography>
+              </Alert>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -597,6 +644,44 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* Salary Change Dialog */}
+      <SalaryChangeDialog
+        open={salaryChangeDialog.open}
+        employee={salaryChangeDialog.employee}
+        onClose={() => setSalaryChangeDialog({ open: false, employee: null })}
+        onSuccess={() => {
+          loadEmployees();
+          setSalaryChangeDialog({ open: false, employee: null });
+          showSnackbar('Salary updated successfully', 'success');
+        }}
+      />
+
+      {/* Employment Status Change Dialog */}
+      <EmploymentStatusDialog
+        open={statusChangeDialog.open}
+        employee={statusChangeDialog.employee}
+        onClose={() => setStatusChangeDialog({ open: false, employee: null })}
+        onSuccess={() => {
+          loadEmployees();
+          setStatusChangeDialog({ open: false, employee: null });
+          showSnackbar('Employment status updated successfully', 'success');
+        }}
+      />
+
+      {/* Salary History Dialog */}
+      <SalaryHistoryDialog
+        open={salaryHistoryDialog.open}
+        employee={salaryHistoryDialog.employee}
+        onClose={() => setSalaryHistoryDialog({ open: false, employee: null })}
+      />
+
+      {/* Employment History Dialog */}
+      <EmploymentHistoryDialog
+        open={employmentHistoryDialog.open}
+        employee={employmentHistoryDialog.employee}
+        onClose={() => setEmploymentHistoryDialog({ open: false, employee: null })}
+      />
     </Box>
   );
 };
