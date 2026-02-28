@@ -28,6 +28,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import {
   CheckCircle,
@@ -99,6 +101,9 @@ const AttendanceManagement: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [openAttendanceDialog, setOpenAttendanceDialog] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
+  const [activeTab, setActiveTab] = useState(0);
+  const [dailySummaryDate, setDailySummaryDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [dailySummaryRecords, setDailySummaryRecords] = useState<AttendanceRecord[]>([]);
 
   useEffect(() => {
     loadEmployees();
@@ -113,6 +118,12 @@ const AttendanceManagement: React.FC = () => {
   useEffect(() => {
     loadDailyAttendance();
   }, [selectedDate]);
+
+  useEffect(() => {
+    if (activeTab === 1) {
+      loadDailySummary();
+    }
+  }, [dailySummaryDate, activeTab]);
 
   const loadEmployees = async () => {
     try {
@@ -181,6 +192,23 @@ const AttendanceManagement: React.FC = () => {
 
   const showSnackbar = (message: string, severity: 'success' | 'error') => {
     setSnackbar({ open: true, message, severity });
+  };
+
+  const loadDailySummary = async () => {
+    try {
+      setLoading(true);
+      const result = await databaseService.getAllAttendance();
+      const dateRecords = result.filter((r: any) => {
+        const recordDate = typeof r.date === 'string' ? r.date : r.date.toISOString().split('T')[0];
+        return recordDate === dailySummaryDate;
+      });
+      setDailySummaryRecords(dateRecords);
+    } catch (error) {
+      console.error('Error loading daily summary:', error);
+      showSnackbar('Failed to load daily summary', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const calculateWorkingHours = (checkIn: string, checkOut: string, breakTime: number): { 
@@ -454,7 +482,16 @@ const AttendanceManagement: React.FC = () => {
         </Button>
       </Box>
 
+      {/* View Tabs */}
+      <Card sx={{ mb: 2 }}>
+        <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)} variant="fullWidth">
+          <Tab label="Employee Calendar" />
+          <Tab label="Daily Summary" />
+        </Tabs>
+      </Card>
+
       {/* Employee Calendar View */}
+      {activeTab === 0 && (
       <Card>
         <CardContent>
           <Stack spacing={2}>
@@ -589,6 +626,179 @@ const AttendanceManagement: React.FC = () => {
               </Stack>
             </CardContent>
           </Card>
+      )}
+
+      {/* Daily Summary View */}
+      {activeTab === 1 && (
+        <Card>
+          <CardContent>
+            <Stack spacing={3}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Typography variant="h6">
+                  Daily Attendance Summary
+                </Typography>
+                <TextField
+                  type="date"
+                  label="Select Date"
+                  value={dailySummaryDate}
+                  onChange={(e) => setDailySummaryDate(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  size="small"
+                  sx={{ width: 200 }}
+                />
+                <IconButton size="small" onClick={loadDailySummary}>
+                  <Refresh />
+                </IconButton>
+              </Box>
+
+              <Divider />
+
+              <Typography variant="subtitle2" color="text.secondary">
+                Attendance for {new Date(dailySummaryDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+              </Typography>
+
+              {loading ? (
+                <Alert severity="info">Loading attendance records...</Alert>
+              ) : (
+                <TableContainer component={Paper} variant="outlined">
+                  <Table>
+                    <TableHead>
+                      <TableRow sx={{ bgcolor: 'primary.main' }}>
+                        <TableCell sx={{ color: 'white', fontWeight: 600 }}>Employee</TableCell>
+                        <TableCell sx={{ color: 'white', fontWeight: 600 }}>Status</TableCell>
+                        <TableCell sx={{ color: 'white', fontWeight: 600 }}>Check In</TableCell>
+                        <TableCell sx={{ color: 'white', fontWeight: 600 }}>Check Out</TableCell>
+                        <TableCell sx={{ color: 'white', fontWeight: 600 }}>Break (hrs)</TableCell>
+                        <TableCell sx={{ color: 'white', fontWeight: 600 }}>Working Hours</TableCell>
+                        <TableCell sx={{ color: 'white', fontWeight: 600 }}>Overtime</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {getActiveEmployeesOnDate(dailySummaryDate).map((employee) => {
+                        const record = dailySummaryRecords.find(r => r.employeeId === employee._id);
+                        
+                        return (
+                          <TableRow key={employee._id} hover>
+                            <TableCell>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Person fontSize="small" color="action" />
+                                <Box>
+                                  <Typography variant="body2" fontWeight={500}>{employee.name}</Typography>
+                                  <Typography variant="caption" color="text.secondary">
+                                    {employee.employee_id}
+                                  </Typography>
+                                </Box>
+                              </Box>
+                            </TableCell>
+                            <TableCell>
+                              {record ? (
+                                <Chip 
+                                  label={record.status} 
+                                  size="small" 
+                                  color={getStatusColor(record.status)}
+                                  icon={getStatusIcon(record.status) || undefined}
+                                />
+                              ) : (
+                                <Chip label="No Record" size="small" color="default" />
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {record?.status === 'Present' ? (
+                                <Typography variant="body2">{record.check_in_time || '-'}</Typography>
+                              ) : (
+                                <Typography variant="body2" color="text.secondary">-</Typography>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {record?.status === 'Present' ? (
+                                <Typography variant="body2">{record.check_out_time || '-'}</Typography>
+                              ) : (
+                                <Typography variant="body2" color="text.secondary">-</Typography>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {record?.status === 'Present' ? (
+                                <Typography variant="body2">{record.break_time || 0}</Typography>
+                              ) : (
+                                <Typography variant="body2" color="text.secondary">-</Typography>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {record?.status === 'Present' && record.working_hours ? (
+                                <Chip 
+                                  label={`${record.working_hours}h`} 
+                                  size="small" 
+                                  color="primary"
+                                  variant="outlined"
+                                />
+                              ) : (
+                                <Typography variant="body2" color="text.secondary">-</Typography>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {record?.status === 'Present' && record.overtime_hours > 0 ? (
+                                <Chip 
+                                  label={`+${record.overtime_hours}h`} 
+                                  size="small" 
+                                  color="success"
+                                />
+                              ) : (
+                                <Typography variant="body2" color="text.secondary">-</Typography>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+
+              {!loading && getActiveEmployeesOnDate(dailySummaryDate).length === 0 && (
+                <Alert severity="info">No employees were active on this date</Alert>
+              )}
+
+              {/* Summary Statistics */}
+              {!loading && dailySummaryRecords.length > 0 && (
+                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                  <Card variant="outlined" sx={{ flex: 1, minWidth: 150 }}>
+                    <CardContent>
+                      <Typography variant="caption" color="text.secondary">Present</Typography>
+                      <Typography variant="h4" color="success.main">
+                        {dailySummaryRecords.filter(r => r.status === 'Present').length}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                  <Card variant="outlined" sx={{ flex: 1, minWidth: 150 }}>
+                    <CardContent>
+                      <Typography variant="caption" color="text.secondary">On Leave</Typography>
+                      <Typography variant="h4" color="warning.main">
+                        {dailySummaryRecords.filter(r => r.status === 'Leave').length}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                  <Card variant="outlined" sx={{ flex: 1, minWidth: 150 }}>
+                    <CardContent>
+                      <Typography variant="caption" color="text.secondary">Absent</Typography>
+                      <Typography variant="h4" color="error.main">
+                        {dailySummaryRecords.filter(r => r.status === 'Absent').length}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                  <Card variant="outlined" sx={{ flex: 1, minWidth: 150 }}>
+                    <CardContent>
+                      <Typography variant="caption" color="text.secondary">No Record</Typography>
+                      <Typography variant="h4">
+                        {getActiveEmployeesOnDate(dailySummaryDate).length - dailySummaryRecords.length}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Box>
+              )}
+            </Stack>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Daily Attendance Recording Dialog */}
       <Dialog
