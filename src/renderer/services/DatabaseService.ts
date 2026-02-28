@@ -16,7 +16,7 @@ interface AttendanceRecord {
   break_time: number;
   working_hours: number;
   overtime_hours: number;
-  status: 'Present' | 'Absent' | 'Half Day' | 'Leave';
+  status: 'Present' | 'Absent' | 'Leave';
   notes?: string;
   createdAt?: Date;
   updatedAt?: Date;

@@ -59,13 +59,13 @@ interface AttendanceRecord {
   break_time: number; // in hours
   working_hours: number;
   overtime_hours: number;
-  status: 'Present' | 'Absent' | 'Half Day' | 'Leave';
+  status: 'Present' | 'Absent' | 'Leave';
   notes?: string;
 }
 
 interface DayStatus {
   date: Date;
-  status: 'Present' | 'Absent' | 'Half Day' | 'Leave' | 'None';
+  status: 'Present' | 'Absent' | 'Leave' | 'None';
   working_hours?: number;
   overtime_hours?: number;
 }
@@ -88,7 +88,7 @@ const AttendanceManagement: React.FC = () => {
   
   // Form data for daily attendance entry
   const [dailyAttendance, setDailyAttendance] = useState<Map<string, {
-    status: 'Present' | 'Absent' | 'Half Day' | 'Leave';
+    status: 'Present' | 'Absent' | 'Leave';
     check_in_time: string;
     check_out_time: string;
     break_time: number;
@@ -210,7 +210,7 @@ const AttendanceManagement: React.FC = () => {
 
   const handleStatusChange = (employeeId: string, field: string, value: any) => {
     const current = dailyAttendance.get(employeeId) || {
-      status: 'Present' as 'Present' | 'Absent' | 'Half Day' | 'Leave',
+      status: 'Present' as 'Present' | 'Absent' | 'Leave',
       check_in_time: '',
       check_out_time: '',
       break_time: 0,
@@ -241,11 +241,8 @@ const AttendanceManagement: React.FC = () => {
           data.break_time
         );
         
-        // Determine final status
-        let finalStatus = data.status;
-        if (finalStatus === 'Present' && calculation.isHalfDay) {
-          finalStatus = 'Half Day';
-        }
+        // Use the selected status as final status
+        const finalStatus = data.status;
         
         const attendanceRecord = {
           employeeId: employeeId,
@@ -337,10 +334,9 @@ const AttendanceManagement: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Present': return 'success';
-      case 'Absent': return 'error';
-      case 'Half Day': return 'warning';
-      case 'Leave': return 'info';
+      case 'Present': return 'success';  // Green
+      case 'Leave': return 'warning';     // Orange
+      case 'Absent': return 'error';      // Deep Red
       default: return 'default';
     }
   };
@@ -349,7 +345,7 @@ const AttendanceManagement: React.FC = () => {
     switch (status) {
       case 'Present': return <CheckCircle fontSize="small" />;
       case 'Absent': return <Cancel fontSize="small" />;
-      case 'Half Day': return <AccessTime fontSize="small" />;
+      case 'Leave': return <AccessTime fontSize="small" />;
       default: return null;
     }
   };
@@ -556,10 +552,9 @@ const AttendanceManagement: React.FC = () => {
                                         fontSize: '0.75rem',
                                         cursor: 'pointer',
                                         bgcolor: day.status !== 'None' ? 
-                                          (day.status === 'Present' ? 'success.light' :
-                                           day.status === 'Absent' ? 'error.light' :
-                                           day.status === 'Half Day' ? 'warning.light' :
-                                           day.status === 'Leave' ? 'info.light' : 'transparent') : 
+                                          (day.status === 'Present' ? 'success.main' :
+                                           day.status === 'Leave' ? 'warning.main' :
+                                           day.status === 'Absent' ? 'error.dark' : 'transparent') : 
                                           'transparent',
                                         color: day.status !== 'None' ? 'white' : 'text.primary',
                                         border: isToday(day.date) ? '2px solid #1976d2' : 'none',
@@ -582,9 +577,8 @@ const AttendanceManagement: React.FC = () => {
                     {/* Legend */}
                     <Box sx={{ mt: 2, display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
                       <Chip label="Present" size="small" color="success" />
+                      <Chip label="Leave" size="small" color="warning" />
                       <Chip label="Absent" size="small" color="error" />
-                      <Chip label="Half Day" size="small" color="warning" />
-                      <Chip label="Leave" size="small" color="info" />
                     </Box>
                   </Box>
                 ) : (
@@ -645,7 +639,7 @@ const AttendanceManagement: React.FC = () => {
                 <TableBody>
                   {getActiveEmployeesOnDate(selectedDate).map((employee) => {
                     const attendance = dailyAttendance.get(employee._id!) || {
-                      status: 'Present' as 'Present' | 'Absent' | 'Half Day' | 'Leave',
+                      status: 'Present' as 'Present' | 'Absent' | 'Leave',
                       check_in_time: '',
                       check_out_time: '',
                       break_time: 0,
@@ -738,7 +732,7 @@ const AttendanceManagement: React.FC = () => {
                             <Chip 
                               label={`${calculation.working}h`} 
                               size="small"
-                              color={calculation.isHalfDay ? 'warning' : 'default'}
+                              color="default"
                             />
                           )}
                         </TableCell>
