@@ -24,7 +24,14 @@ import {
   InputLabel,
   Alert,
   CircularProgress,
-  Divider
+  Divider,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Checkbox,
+  Snackbar,
+  InputAdornment
 } from '@mui/material';
 import {
   Calculate as CalculateIcon,
@@ -34,10 +41,11 @@ import {
   Payment as PaymentIcon,
   Visibility as VisibilityIcon,
   Download as DownloadIcon,
-  CalendarToday as CalendarIcon
+  CalendarToday as CalendarIcon,
+  Close as CloseIcon
 } from '@mui/icons-material';
 import { Employee } from '../types/Employee';
-import databaseService from '../services/DatabaseService';
+import databaseService, { PayoutRecord } from '../services/DatabaseService';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -73,6 +81,8 @@ interface WageCalculationResult {
   effectiveHours: number;
   dailyWage: number;
   calculatedWage: number;
+  paidWage: number;
+  remainingWage: number;
   periodStart: string;
   periodEnd: string;
   attendanceRecords: number;
@@ -87,6 +97,21 @@ interface BonusCalculationResult {
   periodStart: string;
   periodEnd: string;
   lastBonusPaid: string;
+}
+
+interface PayoutEmployeeData {
+  employeeId: string;
+  employeeIdNumber: string;
+  employeeName: string;
+  totalHours: number;
+  exceptionHours: number;
+  effectiveHours: number;
+  dailyWage: number;
+  calculatedAmount: number;
+  paidAmount: number;
+  remainingAmount: number;
+  payoutAmount: number;
+  selected: boolean;
 }
 
 const WageManagement: React.FC = () => {
@@ -110,6 +135,20 @@ const WageManagement: React.FC = () => {
   });
   const [bonusResults, setBonusResults] = useState<BonusCalculationResult[]>([]);
   const [bonusRate, setBonusRate] = useState(8.33);
+
+  // Payout dialog state
+  const [payoutDialogOpen, setPayoutDialogOpen] = useState(false);
+  const [payoutType, setPayoutType] = useState<'wage' | 'bonus'>('wage');
+  const [payoutPeriod, setPayoutPeriod] = useState({
+    startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0]
+  });
+  const [payoutDate, setPayoutDate] = useState(new Date().toISOString().split('T')[0]);
+  const [payoutEmployees, setPayoutEmployees] = useState<PayoutEmployeeData[]>([]);
+  const [savingPayout, setSavingPayout] = useState(false);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+
 
   useEffect(() => {
     loadEmployees();
@@ -237,6 +276,22 @@ const WageManagement: React.FC = () => {
         const dailyWage = employeeData.daily_wage || employeeData.salary || 0;
         const calculatedWage = (effectiveHours * dailyWage) / 8;
 
+        // Get payout records for this employee in this period
+        const allPayouts = await databaseService.getAllPayouts();
+        const employeePayouts = allPayouts.filter((payout: any) => 
+          payout.employeeId === employeeData._id &&
+          payout.payout_type === 'wage' &&
+          payout.payout_date >= wageCalculationPeriod.startDate &&
+          payout.payout_date <= wageCalculationPeriod.endDate
+        );
+        
+        // Sum up all paid amounts
+        const paidWage = employeePayouts.reduce((sum: number, payout: any) => 
+          sum + (payout.actual_amount || 0), 0
+        );
+        
+        const remainingWage = calculatedWage - paidWage;
+
         results.push({
           employeeId: employeeData.employee_id || employeeData._id,
           employeeName: employeeData.name || 'Unknown',
@@ -245,6 +300,8 @@ const WageManagement: React.FC = () => {
           effectiveHours,
           dailyWage,
           calculatedWage,
+          paidWage,
+          remainingWage,
           periodStart: wageCalculationPeriod.startDate,
           periodEnd: wageCalculationPeriod.endDate,
           attendanceRecords: attendanceRecords.length
@@ -322,6 +379,183 @@ const WageManagement: React.FC = () => {
       console.error('Error calculating bonus:', error);
     } finally {
       setCalculating(false);
+    }
+  };
+
+  // Open payout dialog
+  const openPayoutDialog = async (type: 'wage' | 'bonus') => {
+    setPayoutType(type);
+    setPayoutDialogOpen(true);
+    
+    // Set default period based on type
+    if (type === 'wage') {
+      setPayoutPeriod({
+        startDate: wageCalculationPeriod.startDate,
+        endDate: wageCalculationPeriod.endDate
+      });
+    } else {
+      setPayoutPeriod({
+        startDate: bonusCalculationPeriod.startDate,
+        endDate: bonusCalculationPeriod.endDate
+      });
+    }
+    
+    // Load employee payout data
+    await loadPayoutEmployees(type, payoutPeriod.startDate, payoutPeriod.endDate);
+  };
+
+  // Load employees with calculated payout amounts
+  const loadPayoutEmployees = async (type: 'wage' | 'bonus', startDate: string, endDate: string) => {
+    try {
+      setCalculating(true);
+      const payoutData: PayoutEmployeeData[] = [];
+      
+      const employeesToProcess = selectedEmployee 
+        ? employees.filter(emp => emp._id === selectedEmployee)
+        : employees;
+
+      for (const employee of employeesToProcess) {
+        const employeeData = employee as any;
+        
+        // Get attendance records for the period
+        const attendanceRecords = await databaseService.getAttendanceByEmployeeAndDateRange(
+          employeeData._id,
+          startDate,
+          endDate
+        );
+
+        let totalHours = 0;
+        let totalBreakHours = 0;
+        let totalEarned = 0;
+        const dailyWage = employeeData.daily_wage || employeeData.salary || 0;
+        
+        // Calculate hours and earnings
+        for (const record of attendanceRecords) {
+          const recordData = record as any;
+          let hoursWorked = 0;
+          
+          if (recordData.check_in_time && recordData.check_out_time) {
+            hoursWorked = calculateTotalHours(recordData.check_in_time, recordData.check_out_time);
+          } else if (recordData.working_hours) {
+            hoursWorked = recordData.working_hours;
+          } else if (recordData.status === 'present') {
+            hoursWorked = 8;
+          }
+          
+          totalHours += hoursWorked;
+          
+          const breakHours = recordData.break_time || 0;
+          totalBreakHours += breakHours;
+          
+          const effectiveHours = Math.max(0, hoursWorked - breakHours);
+          const dailyEarnings = (effectiveHours * dailyWage) / 8;
+          totalEarned += dailyEarnings;
+        }
+
+        const effectiveHours = Math.max(0, totalHours - totalBreakHours);
+        let calculatedAmount = 0;
+        
+        if (type === 'wage') {
+          calculatedAmount = (effectiveHours * dailyWage) / 8;
+        } else {
+          // Bonus calculation
+          const bonusRate = bonusResults.find(r => r.employeeId === (employeeData.employee_id || employeeData._id))?.bonusRate || 8.33;
+          calculatedAmount = (totalEarned * bonusRate) / 100;
+        }
+
+        payoutData.push({
+          employeeId: employeeData._id,
+          employeeIdNumber: employeeData.employee_id,
+          employeeName: employeeData.name,
+          totalHours,
+          exceptionHours: totalBreakHours,
+          effectiveHours,
+          dailyWage,
+          calculatedAmount,
+          payoutAmount: calculatedAmount,
+          selected: false
+        });
+      }
+
+      setPayoutEmployees(payoutData);
+    } catch (error) {
+      console.error('Error loading payout employees:', error);
+    } finally {
+      setCalculating(false);
+    }
+  };
+
+  // Handle payout period change
+  const handlePayoutPeriodChange = async (field: 'startDate' | 'endDate', value: string) => {
+    const newPeriod = { ...payoutPeriod, [field]: value };
+    setPayoutPeriod(newPeriod);
+    await loadPayoutEmployees(payoutType, newPeriod.startDate, newPeriod.endDate);
+  };
+
+  // Toggle employee selection
+  const toggleEmployeeSelection = (employeeId: string) => {
+    setPayoutEmployees(prev => prev.map(emp => 
+      emp.employeeId === employeeId ? { ...emp, selected: !emp.selected } : emp
+    ));
+  };
+
+  // Toggle all employees
+  const toggleAllEmployees = () => {
+    const allSelected = payoutEmployees.every(emp => emp.selected);
+    setPayoutEmployees(prev => prev.map(emp => ({ ...emp, selected: !allSelected })));
+  };
+
+  // Update payout amount
+  const updatePayoutAmount = (employeeId: string, amount: number) => {
+    setPayoutEmployees(prev => prev.map(emp => 
+      emp.employeeId === employeeId ? { ...emp, payoutAmount: amount } : emp
+    ));
+  };
+
+  // Save payouts
+  const savePayouts = async () => {
+    try {
+      setSavingPayout(true);
+      const selectedEmployees = payoutEmployees.filter(emp => emp.selected);
+      
+      if (selectedEmployees.length === 0) {
+        setSnackbarMessage('Please select at least one employee');
+        setSnackbarOpen(true);
+        return;
+      }
+
+      for (const emp of selectedEmployees) {
+        const payoutRecord: Omit<PayoutRecord, '_id'> = {
+          employeeId: emp.employeeId,
+          employee_id: emp.employeeIdNumber,
+          employee_name: emp.employeeName,
+          payout_type: payoutType,
+          period_start: payoutPeriod.startDate,
+          period_end: payoutPeriod.endDate,
+          payout_date: payoutDate,
+          total_hours: emp.totalHours,
+          exception_hours: emp.exceptionHours,
+          effective_hours: emp.effectiveHours,
+          daily_wage: emp.dailyWage,
+          calculated_amount: emp.calculatedAmount,
+          actual_amount: emp.payoutAmount
+        };
+
+        await databaseService.addPayoutRecord(payoutRecord);
+      }
+
+      setSnackbarMessage(`Successfully saved payouts for ${selectedEmployees.length} employee(s)`);
+      setSnackbarOpen(true);
+      setPayoutDialogOpen(false);
+      
+      // Reset selections
+      setPayoutEmployees(prev => prev.map(emp => ({ ...emp, selected: false })));
+    } catch (error) {
+      console.error('Error saving payouts:', error);
+      setSnackbarMessage('Error saving payouts. Please try again.');
+      setSnackbarOpen(true);
+    } finally {
+      setSavingPayout(false);
     }
   };
 
@@ -461,9 +695,20 @@ const WageManagement: React.FC = () => {
                       onClick={calculateWages}
                       disabled={calculating}
                       startIcon={calculating ? <CircularProgress size={20} /> : <CalculateIcon />}
-                      sx={{ py: 1.5 }}
+                      sx={{ py: 1.5, mb: 2 }}
                     >
                       {calculating ? 'Calculating...' : 'Calculate Wages'}
+                    </Button>
+
+                    <Button
+                      fullWidth
+                      variant="outlined"
+                      onClick={() => openPayoutDialog('wage')}
+                      disabled={wageResults.length === 0}
+                      startIcon={<PaymentIcon />}
+                      sx={{ py: 1.5 }}
+                    >
+                      Record Wage Payout
                     </Button>
                   </Box>
 
@@ -499,6 +744,8 @@ const WageManagement: React.FC = () => {
                             <TableCell align="right">Effective Hours</TableCell>
                             <TableCell align="right">Daily Wage</TableCell>
                             <TableCell align="right">Calculated Wage</TableCell>
+                            <TableCell align="right">Paid Wage</TableCell>
+                            <TableCell align="right">Remaining</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
@@ -519,9 +766,22 @@ const WageManagement: React.FC = () => {
                               <TableCell align="right">{result.effectiveHours.toFixed(2)}</TableCell>
                               <TableCell align="right">{formatCurrency(result.dailyWage)}</TableCell>
                               <TableCell align="right">
-                                <Typography variant="body2" fontWeight="bold" color="success.main">
+                                <Typography variant="body2" fontWeight="bold" color="primary">
                                   {formatCurrency(result.calculatedWage)}
                                 </Typography>
+                              </TableCell>
+                              <TableCell align="right">
+                                <Typography variant="body2" fontWeight="medium" color={result.paidWage > 0 ? "success.main" : "text.secondary"}>
+                                  {formatCurrency(result.paidWage)}
+                                </Typography>
+                              </TableCell>
+                              <TableCell align="right">
+                                <Chip 
+                                  label={formatCurrency(result.remainingWage)}
+                                  size="small"
+                                  color={result.remainingWage > 0 ? "warning" : "success"}
+                                  sx={{ fontWeight: 'bold', minWidth: 100 }}
+                                />
                               </TableCell>
                             </TableRow>
                           ))}
@@ -590,9 +850,20 @@ const WageManagement: React.FC = () => {
                       onClick={calculateBonus}
                       disabled={calculating}
                       startIcon={calculating ? <CircularProgress size={20} /> : <AccountBalanceIcon />}
-                      sx={{ py: 1.5 }}
+                      sx={{ py: 1.5, mb: 2 }}
                     >
                       {calculating ? 'Calculating...' : 'Calculate Bonus'}
+                    </Button>
+
+                    <Button
+                      fullWidth
+                      variant="outlined"
+                      onClick={() => openPayoutDialog('bonus')}
+                      disabled={bonusResults.length === 0}
+                      startIcon={<PaymentIcon />}
+                      sx={{ py: 1.5 }}
+                    >
+                      Record Bonus Payment
                     </Button>
                   </Box>
 
@@ -666,6 +937,187 @@ const WageManagement: React.FC = () => {
           </Box>
         </TabPanel>
       </Paper>
+
+      {/* Payout Dialog */}
+      <Dialog 
+        open={payoutDialogOpen} 
+        onClose={() => setPayoutDialogOpen(false)}
+        maxWidth="lg"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h6">
+              {payoutType === 'wage' ? '💵 Record Wage Payout' : '🎁 Record Bonus Payment'}
+            </Typography>
+            <IconButton onClick={() => setPayoutDialogOpen(false)} size="small">
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        
+        <DialogContent>
+          {/* Period Selection */}
+          <Paper sx={{ p: 2, mb: 3, bgcolor: 'grey.50' }}>
+            <Typography variant="subtitle2" gutterBottom>
+              Calculation Period
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
+              <TextField
+                type="date"
+                label="Start Date"
+                value={payoutPeriod.startDate}
+                onChange={(e) => handlePayoutPeriodChange('startDate', e.target.value)}
+                size="small"
+                InputLabelProps={{ shrink: true }}
+                sx={{ flex: 1 }}
+              />
+              <TextField
+                type="date"
+                label="End Date"
+                value={payoutPeriod.endDate}
+                onChange={(e) => handlePayoutPeriodChange('endDate', e.target.value)}
+                size="small"
+                InputLabelProps={{ shrink: true }}
+                sx={{ flex: 1 }}
+              />
+              <TextField
+                type="date"
+                label="Payout Date"
+                value={payoutDate}
+                onChange={(e) => setPayoutDate(e.target.value)}
+                size="small"
+                InputLabelProps={{ shrink: true }}
+                sx={{ flex: 1 }}
+              />
+            </Box>
+          </Paper>
+
+          {calculating ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <TableContainer component={Paper}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow sx={{ bgcolor: 'primary.main' }}>
+                    <TableCell padding="checkbox">
+                      <Checkbox
+                        checked={payoutEmployees.length > 0 && payoutEmployees.every(emp => emp.selected)}
+                        indeterminate={payoutEmployees.some(emp => emp.selected) && !payoutEmployees.every(emp => emp.selected)}
+                        onChange={toggleAllEmployees}
+                        sx={{ color: 'white', '&.Mui-checked': { color: 'white' } }}
+                      />
+                    </TableCell>
+                    <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Employee</TableCell>
+                    <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Total Hours</TableCell>
+                    <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Exception Hrs</TableCell>
+                    <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Daily Wage</TableCell>
+                    <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Calculated</TableCell>
+                    <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Payout Amount</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {payoutEmployees.map((emp) => (
+                    <TableRow 
+                      key={emp.employeeId}
+                      sx={{ 
+                        bgcolor: emp.selected ? 'action.selected' : 'inherit',
+                        '&:hover': { bgcolor: 'action.hover' }
+                      }}
+                    >
+                      <TableCell padding="checkbox">
+                        <Checkbox
+                          checked={emp.selected}
+                          onChange={() => toggleEmployeeSelection(emp.employeeId)}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Box>
+                          <Typography variant="body2" fontWeight="medium">
+                            {emp.employeeName}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {emp.employeeIdNumber}
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Chip 
+                          label={emp.totalHours.toFixed(1)} 
+                          size="small" 
+                          sx={{ minWidth: 60 }}
+                        />
+                      </TableCell>
+                      <TableCell align="right">
+                        <Chip 
+                          label={emp.exceptionHours.toFixed(1)} 
+                          size="small" 
+                          color="warning"
+                          sx={{ minWidth: 60 }}
+                        />
+                      </TableCell>
+                      <TableCell align="right">
+                        <Typography variant="body2">
+                          {formatCurrency(emp.dailyWage)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Typography variant="body2" fontWeight="bold" color="primary">
+                          {formatCurrency(emp.calculatedAmount)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="right">
+                        <TextField
+                          type="number"
+                          value={emp.payoutAmount}
+                          onChange={(e) => updatePayoutAmount(emp.employeeId, parseFloat(e.target.value) || 0)}
+                          size="small"
+                          sx={{ width: 140 }}
+                          InputProps={{
+                            startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                          }}
+                          inputProps={{ step: 0.01, min: 0 }}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+
+          {payoutEmployees.length === 0 && !calculating && (
+            <Alert severity="info" sx={{ mt: 2 }}>
+              No employee data available for the selected period. Please calculate {payoutType === 'wage' ? 'wages' : 'bonuses'} first.
+            </Alert>
+          )}
+        </DialogContent>
+
+        <DialogActions sx={{ p: 2, gap: 1 }}>
+          <Button onClick={() => setPayoutDialogOpen(false)} color="inherit">
+            Cancel
+          </Button>
+          <Button
+            onClick={savePayouts}
+            variant="contained"
+            disabled={savingPayout || payoutEmployees.filter(e => e.selected).length === 0}
+            startIcon={savingPayout ? <CircularProgress size={20} /> : <PaymentIcon />}
+          >
+            {savingPayout ? 'Saving...' : `Save Payout (${payoutEmployees.filter(e => e.selected).length} selected)`}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={4000}
+        onClose={() => setSnackbarOpen(false)}
+        message={snackbarMessage}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
     </Box>
   );
 };
