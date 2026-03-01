@@ -480,15 +480,9 @@ const SalesManagement: React.FC = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom sx={{ 
-        background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)',
-        backgroundClip: 'text',
-        WebkitBackgroundClip: 'text',
-        color: 'transparent',
-        fontWeight: 'bold',
-        mb: 3
-      }}>
-        💰 Sales Management
+      <Typography variant="h4" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <AttachMoney color="primary" />
+        Sales Management
       </Typography>
 
       {error && (

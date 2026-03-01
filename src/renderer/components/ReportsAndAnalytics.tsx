@@ -1041,15 +1041,9 @@ const ReportsAndAnalytics: React.FC = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom sx={{ 
-        background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)',
-        backgroundClip: 'text',
-        WebkitBackgroundClip: 'text',
-        color: 'transparent',
-        fontWeight: 'bold',
-        mb: 3
-      }}>
-        📊 Reports & Analytics
+      <Typography variant="h4" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Assessment color="primary" />
+        Reports & Analytics
       </Typography>
 
       {/* Filters Section */}

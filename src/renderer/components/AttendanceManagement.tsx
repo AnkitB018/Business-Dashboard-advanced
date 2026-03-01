@@ -471,15 +471,9 @@ const AttendanceManagement: React.FC = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom sx={{ 
-        fontWeight: 600,
-        background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
-        backgroundClip: 'text',
-        WebkitBackgroundClip: 'text',
-        color: 'transparent',
-        mb: 3
-      }}>
-        📅 Attendance Management
+<Typography variant="h4" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <CalendarMonth color="primary" />
+        Attendance Management
       </Typography>
 
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>

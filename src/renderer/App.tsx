@@ -2,6 +2,7 @@
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { Box, Typography, Paper, CircularProgress } from '@mui/material';
+import { Dashboard as DashboardIcon } from '@mui/icons-material';
 import MainLayout from './components/MainLayout';
 import DatabaseSetupDialog from './components/DatabaseSetupDialog';
 import EmployeeManagement from './components/EmployeeManagement';
@@ -385,8 +386,9 @@ const DashboardPage = ({ onNavigate }: { onNavigate: (page: string) => void }) =
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom sx={{ mb: 4 }}>
-        📊 Business Dashboard
+      <Typography variant="h4" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 4 }}>
+        <DashboardIcon color="primary" />
+        Business Dashboard
       </Typography>
       
       {/* Key Metrics Cards (compact) */}
