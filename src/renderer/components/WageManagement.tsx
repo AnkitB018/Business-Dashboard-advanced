@@ -42,7 +42,8 @@ import {
   Visibility as VisibilityIcon,
   Download as DownloadIcon,
   CalendarToday as CalendarIcon,
-  Close as CloseIcon
+  Close as CloseIcon,
+  Delete as DeleteIcon
 } from '@mui/icons-material';
 import { Employee } from '../types/Employee';
 import databaseService, { PayoutRecord } from '../services/DatabaseService';
@@ -127,6 +128,7 @@ const WageManagement: React.FC = () => {
     endDate: new Date().toISOString().split('T')[0]
   });
   const [wageResults, setWageResults] = useState<WageCalculationResult[]>([]);
+  const [wagePayoutHistory, setWagePayoutHistory] = useState<PayoutRecord[]>([]);
   
   // Bonus calculation state
   const [bonusCalculationPeriod, setBonusCalculationPeriod] = useState({
@@ -234,9 +236,24 @@ const WageManagement: React.FC = () => {
       setCalculating(true);
       const results: WageCalculationResult[] = [];
       
-      const employeesToCalculate = selectedEmployee 
+      let employeesToCalculate = selectedEmployee 
         ? employees.filter(emp => emp._id === selectedEmployee)
         : employees;
+
+      // Filter employees based on active status during the period
+      employeesToCalculate = employeesToCalculate.filter(emp => {
+        const empData = emp as any;
+        // If employee was terminated before the period start, exclude them
+        if (empData.termination_date) {
+          const terminationDateStr = empData.termination_date instanceof Date 
+            ? empData.termination_date.toISOString().split('T')[0]
+            : empData.termination_date;
+          if (terminationDateStr < wageCalculationPeriod.startDate) {
+            return false;
+          }
+        }
+        return true;
+      });
 
       for (const employee of employeesToCalculate) {
         const employeeData = employee as any;
@@ -309,10 +326,66 @@ const WageManagement: React.FC = () => {
       }
 
       setWageResults(results);
+      
+      // Load payout history for the selected period and employees
+      await loadWagePayoutHistory();
     } catch (error) {
       console.error('Error calculating wages:', error);
     } finally {
       setCalculating(false);
+    }
+  };
+
+  // Load payout history for wage calculations
+  const loadWagePayoutHistory = async () => {
+    try {
+      const allPayouts = await databaseService.getAllPayouts();
+      
+      // Filter payouts based on selected employee(s) and period
+      let filteredPayouts = allPayouts.filter((payout: any) => 
+        payout.payout_type === 'wage' &&
+        payout.payout_date >= wageCalculationPeriod.startDate &&
+        payout.payout_date <= wageCalculationPeriod.endDate
+      );
+
+      // If specific employee is selected, filter further
+      if (selectedEmployee) {
+        filteredPayouts = filteredPayouts.filter((payout: any) => 
+          payout.employeeId === selectedEmployee
+        );
+      }
+
+      // Sort by payout date (oldest first, chronological order)
+      filteredPayouts.sort((a: any, b: any) => 
+        new Date(a.payout_date).getTime() - new Date(b.payout_date).getTime()
+      );
+
+      setWagePayoutHistory(filteredPayouts as PayoutRecord[]);
+    } catch (error) {
+      console.error('Error loading payout history:', error);
+      setWagePayoutHistory([]);
+    }
+  };
+
+  // Delete a payout record
+  const deletePayoutRecord = async (payoutId: string) => {
+    if (!window.confirm('Are you sure you want to delete this payout transaction?')) {
+      return;
+    }
+
+    try {
+      await databaseService.deletePayoutRecord(payoutId);
+      setSnackbarMessage('Payout transaction deleted successfully');
+      setSnackbarOpen(true);
+      
+      // Reload calculations and history
+      if (wageResults.length > 0) {
+        await calculateWages();
+      }
+    } catch (error) {
+      console.error('Error deleting payout:', error);
+      setSnackbarMessage('Error deleting payout transaction');
+      setSnackbarOpen(true);
     }
   };
 
@@ -322,9 +395,24 @@ const WageManagement: React.FC = () => {
       setCalculating(true);
       const results: BonusCalculationResult[] = [];
       
-      const employeesToCalculate = selectedEmployee 
+      let employeesToCalculate = selectedEmployee 
         ? employees.filter(emp => emp._id === selectedEmployee)
         : employees;
+
+      // Filter employees based on active status during the period
+      employeesToCalculate = employeesToCalculate.filter(emp => {
+        const empData = emp as any;
+        // If employee was terminated before the period start, exclude them
+        if (empData.termination_date) {
+          const terminationDateStr = empData.termination_date instanceof Date 
+            ? empData.termination_date.toISOString().split('T')[0]
+            : empData.termination_date;
+          if (terminationDateStr < bonusCalculationPeriod.startDate) {
+            return false;
+          }
+        }
+        return true;
+      });
 
       for (const employee of employeesToCalculate) {
         const employeeData = employee as any;
@@ -410,9 +498,24 @@ const WageManagement: React.FC = () => {
       setCalculating(true);
       const payoutData: PayoutEmployeeData[] = [];
       
-      const employeesToProcess = selectedEmployee 
+      let employeesToProcess = selectedEmployee 
         ? employees.filter(emp => emp._id === selectedEmployee)
         : employees;
+
+      // Filter employees based on active status during the period
+      employeesToProcess = employeesToProcess.filter(emp => {
+        const empData = emp as any;
+        // If employee was terminated before the period start, exclude them
+        if (empData.termination_date) {
+          const terminationDateStr = empData.termination_date instanceof Date 
+            ? empData.termination_date.toISOString().split('T')[0]
+            : empData.termination_date;
+          if (terminationDateStr < startDate) {
+            return false;
+          }
+        }
+        return true;
+      });
 
       for (const employee of employeesToProcess) {
         const employeeData = employee as any;
@@ -568,6 +671,11 @@ const WageManagement: React.FC = () => {
       
       // Reset selections
       setPayoutEmployees(prev => prev.map(emp => ({ ...emp, selected: false })));
+      
+      // Reload wage calculations and payout history if on wage tab
+      if (payoutType === 'wage' && wageResults.length > 0) {
+        await calculateWages();
+      }
     } catch (error) {
       console.error('Error saving payouts:', error);
       setSnackbarMessage('Error saving payouts. Please try again.');
@@ -705,13 +813,16 @@ const WageManagement: React.FC = () => {
                       }))}
                       sx={{ mb: 3 }}
                       InputLabelProps={{ shrink: true }}
+                      inputProps={{ min: wageCalculationPeriod.startDate }}
+                      error={wageCalculationPeriod.endDate < wageCalculationPeriod.startDate}
+                      helperText={wageCalculationPeriod.endDate < wageCalculationPeriod.startDate ? 'End date must be after start date' : ''}
                     />
                     
                     <Button
                       fullWidth
                       variant="contained"
                       onClick={calculateWages}
-                      disabled={calculating}
+                      disabled={calculating || wageCalculationPeriod.endDate < wageCalculationPeriod.startDate}
                       startIcon={calculating ? <CircularProgress size={20} /> : <CalculateIcon />}
                       sx={{ py: 1.5, mb: 2 }}
                     >
@@ -811,6 +922,110 @@ const WageManagement: React.FC = () => {
               )}
             </Box>
           </Box>
+
+          {/* Payout History Section */}
+          {wagePayoutHistory.length > 0 && (
+            <Box sx={{ mt: 3 }}>
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <VisibilityIcon sx={{ mr: 1 }} />
+                    Recorded Wage Payouts
+                    <Chip 
+                      label={`${wagePayoutHistory.length} transaction${wagePayoutHistory.length !== 1 ? 's' : ''}`}
+                      size="small"
+                      color="primary"
+                      sx={{ ml: 2 }}
+                    />
+                  </Typography>
+                  
+                  <TableContainer>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow sx={{ bgcolor: 'grey.100' }}>
+                          <TableCell sx={{ fontWeight: 'bold' }}>Payout Date</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }}>Employee</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }}>Period</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }} align="right">Paid Amount</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }} align="center">Actions</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {wagePayoutHistory.map((payout, index) => (
+                          <TableRow 
+                            key={index}
+                            sx={{ 
+                              '&:hover': { bgcolor: 'action.hover' },
+                              borderLeft: 3,
+                              borderColor: 'success.main'
+                            }}
+                          >
+                            <TableCell>
+                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <CalendarIcon sx={{ mr: 1, fontSize: 18, color: 'primary.main' }} />
+                                <Typography variant="body2" fontWeight="medium">
+                                  {new Date(payout.payout_date).toLocaleDateString('en-US', { 
+                                    year: 'numeric', 
+                                    month: 'short', 
+                                    day: 'numeric' 
+                                  })}
+                                </Typography>
+                              </Box>
+                            </TableCell>
+                            <TableCell>
+                              <Box>
+                                <Typography variant="body2" fontWeight="medium">
+                                  {payout.employee_name}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {payout.employee_id}
+                                </Typography>
+                              </Box>
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="caption" color="text.secondary">
+                                {new Date(payout.period_start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                {' - '}
+                                {new Date(payout.period_end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </Typography>
+                            </TableCell>
+                            <TableCell align="right">
+                              <Typography variant="body2" fontWeight="bold" color="success.main">
+                                {formatCurrency(payout.actual_amount)}
+                              </Typography>
+                            </TableCell>
+                            <TableCell align="center">
+                              <Tooltip title="Delete transaction">
+                                <IconButton 
+                                  size="small" 
+                                  color="error"
+                                  onClick={() => deletePayoutRecord(payout._id!)}
+                                >
+                                  <DeleteIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+
+                  {/* Summary Card */}
+                  <Box sx={{ mt: 2, p: 2, bgcolor: 'success.50', borderRadius: 1 }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                      <strong>Period Total:</strong> {wageCalculationPeriod.startDate} to {wageCalculationPeriod.endDate}
+                    </Typography>
+                    <Typography variant="h6" color="success.main">
+                      Total Paid: {formatCurrency(
+                        wagePayoutHistory.reduce((sum, p) => sum + p.actual_amount, 0)
+                      )}
+                    </Typography>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Box>
+          )}
         </TabPanel>
 
         {/* Bonus Calculation Tab */}
@@ -850,6 +1065,9 @@ const WageManagement: React.FC = () => {
                       }))}
                       sx={{ mb: 2 }}
                       InputLabelProps={{ shrink: true }}
+                      inputProps={{ min: bonusCalculationPeriod.startDate }}
+                      error={bonusCalculationPeriod.endDate < bonusCalculationPeriod.startDate}
+                      helperText={bonusCalculationPeriod.endDate < bonusCalculationPeriod.startDate ? 'End date must be after start date' : ''}
                     />
                     
                     <TextField
@@ -866,7 +1084,7 @@ const WageManagement: React.FC = () => {
                       fullWidth
                       variant="contained"
                       onClick={calculateBonus}
-                      disabled={calculating}
+                      disabled={calculating || bonusCalculationPeriod.endDate < bonusCalculationPeriod.startDate}
                       startIcon={calculating ? <CircularProgress size={20} /> : <AccountBalanceIcon />}
                       sx={{ py: 1.5, mb: 2 }}
                     >
@@ -997,6 +1215,9 @@ const WageManagement: React.FC = () => {
                 onChange={(e) => handlePayoutPeriodChange('endDate', e.target.value)}
                 size="small"
                 InputLabelProps={{ shrink: true }}
+                inputProps={{ min: payoutPeriod.startDate }}
+                error={payoutPeriod.endDate < payoutPeriod.startDate}
+                helperText={payoutPeriod.endDate < payoutPeriod.startDate ? 'End date must be after start date' : ''}
                 sx={{ flex: 1 }}
               />
               <TextField
