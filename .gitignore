@@ -3,6 +3,7 @@
 
 # Documentation
 docs/
+build/
 
 # Dependencies
 node_modules/
