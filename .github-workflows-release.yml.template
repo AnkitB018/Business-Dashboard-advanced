@@ -1,0 +1,49 @@
+# GitHub Actions Workflow for Automated Releases (OPTIONAL)
+
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Build application
+        run: npm run build
+      
+      - name: Build installer
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run release
+
+# USAGE:
+# 1. This file is OPTIONAL - you can also build and publish manually using: npm run release
+# 2. To use this workflow:
+#    - Uncomment the file by removing the first # from each line
+#    - Rename this file to: .github/workflows/release.yml
+#    - Commit and push to GitHub
+#    - Create a tag: git tag v1.0.0 && git push origin v1.0.0
+#    - GitHub Actions will automatically build and publish the release
+# 
+# 3. GitHub automatically provides GITHUB_TOKEN with necessary permissions
+#    No need to create a personal access token if using this workflow
+# 
+# 4. For manual publishing (recommended for first release):
+#    - Create a personal access token with 'repo' scope
+#    - Set environment variable: $env:GH_TOKEN="your-token"
+#    - Run: npm run release

@@ -21,6 +21,16 @@ const mainConfig = {
   resolve: {
     extensions: ['.ts', '.js'],
   },
+  externals: {
+    // MongoDB optional dependencies - don't bundle them
+    'kerberos': 'commonjs kerberos',
+    '@mongodb-js/zstd': 'commonjs @mongodb-js/zstd',
+    '@aws-sdk/credential-providers': 'commonjs @aws-sdk/credential-providers',
+    'gcp-metadata': 'commonjs gcp-metadata',
+    'snappy': 'commonjs snappy',
+    'aws4': 'commonjs aws4',
+    'mongodb-client-encryption': 'commonjs mongodb-client-encryption',
+  },
   node: {
     __dirname: false,
     __filename: false

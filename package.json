@@ -1,8 +1,18 @@
 {
-  "name": "business-dashboard---electron",
+  "name": "business-dashboard-electron",
+  "productName": "Business Dashboard",
   "version": "1.0.0",
-  "description": "",
+  "description": "Employee Management, Wage Calculation, and Business Analytics Dashboard",
   "main": "dist/main.js",
+  "author": {
+    "name": "Antrocraft and Arolive Build",
+    "email": "support@antrocraft.com"
+  },
+  "license": "SEE LICENSE IN LICENSE.md",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AnkitB018/Business-Dashboard-advanced.git"
+  },
   "scripts": {
     "build": "webpack --mode production",
     "build:dev": "webpack --mode development",
@@ -10,11 +20,66 @@
     "start": "concurrently \"npm run build:dev\" \"npm run build:main\" \"wait-on dist/main.js && electron .\"",
     "dev": "concurrently \"webpack --mode development --watch\" \"wait-on dist/main.js dist/index.html && electron .\"",
     "dist": "npm run build && npm run build:main && electron-builder",
+    "dist:win": "npm run build && npm run build:main && electron-builder --win",
+    "pack": "npm run build && npm run build:main && electron-builder --dir",
+    "release": "npm run build && npm run build:main && electron-builder --publish always",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "build": {
+    "appId": "com.antrocraft.businessdashboard",
+    "productName": "Business Dashboard",
+    "copyright": "Copyright © 2026 Antrocraft and Arolive Build",
+    "compression": "maximum",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json",
+      "LICENSE.md"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "verifyUpdateCodeSignature": false,
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Business Dashboard",
+      "license": "LICENSE.md",
+      "warningsAsErrors": false,
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": true,
+      "displayLanguageSelector": false,
+      "installerLanguages": [
+        "en_US"
+      ],
+      "include": "build/installer.nsh"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "AnkitB018",
+      "repo": "Business-Dashboard-advanced",
+      "releaseType": "release"
+    }
+  },
   "devDependencies": {
     "@types/node": "^24.9.1",
     "@types/xlsx": "^0.0.35",
@@ -41,10 +106,20 @@
     "@types/react-dom": "^19.2.2",
     "@types/recharts": "^1.8.29",
     "dayjs": "^1.11.19",
+    "electron-updater": "^6.3.9",
     "mongodb": "^6.20.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "recharts": "^3.3.0",
     "xlsx": "^0.18.5"
+  },
+  "optionalDependencies": {
+    "kerberos": "^2.1.1",
+    "@mongodb-js/zstd": "^1.2.0",
+    "@aws-sdk/credential-providers": "^3.705.0",
+    "gcp-metadata": "^5.2.0",
+    "snappy": "^7.2.2",
+    "aws4": "^1.13.2",
+    "mongodb-client-encryption": "^6.2.1"
   }
 }

@@ -1,6 +1,9 @@
 #Pyhton code
 .python version/
 
+# Documentation
+docs/
+
 # Dependencies
 node_modules/
 npm-debug.log*
@@ -9,9 +12,11 @@ yarn-error.log*
 
 # Build outputs
 dist/
-build/
 out/
 .webpack/
+
+# Electron builder output (keep build/ directory for assets)
+release/
 
 # Electron specific
 *.app
@@ -202,7 +207,6 @@ tramp
 Business-Dashboard - OLD/
 
 # Documentation and development files
-*.md
 !README.md
 mintty.*.png
 *.png

@@ -1,4 +1,5 @@
 ﻿import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
+import { autoUpdater, UpdateInfo, ProgressInfo } from 'electron-updater';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
@@ -13,6 +14,67 @@ interface DatabaseConfig {
   connectionString: string;
   databaseName: string;
 }
+
+// Auto-updater configuration
+autoUpdater.autoDownload = false; // Don't auto-download, ask user first
+autoUpdater.autoInstallOnAppQuit = true; // Install when app quits
+
+// Auto-updater event handlers
+autoUpdater.on('checking-for-update', () => {
+  if (mainWindow) {
+    mainWindow.webContents.send('update-status', { status: 'checking' });
+  }
+});
+
+autoUpdater.on('update-available', (info: UpdateInfo) => {
+  if (mainWindow) {
+    mainWindow.webContents.send('update-status', { 
+      status: 'available', 
+      version: info.version,
+      releaseNotes: info.releaseNotes,
+      releaseDate: info.releaseDate
+    });
+  }
+});
+
+autoUpdater.on('update-not-available', () => {
+  if (mainWindow) {
+    mainWindow.webContents.send('update-status', { status: 'not-available' });
+  }
+});
+
+autoUpdater.on('error', (error: Error) => {
+  console.error('Auto-update error:', error);
+  if (mainWindow) {
+    mainWindow.webContents.send('update-status', { 
+      status: 'error', 
+      error: error.message 
+    });
+  }
+});
+
+autoUpdater.on('download-progress', (progress: ProgressInfo) => {
+  if (mainWindow) {
+    mainWindow.webContents.send('update-status', { 
+      status: 'downloading', 
+      progress: {
+        percent: progress.percent,
+        transferred: progress.transferred,
+        total: progress.total,
+        bytesPerSecond: progress.bytesPerSecond
+      }
+    });
+  }
+});
+
+autoUpdater.on('update-downloaded', (info: UpdateInfo) => {
+  if (mainWindow) {
+    mainWindow.webContents.send('update-status', { 
+      status: 'downloaded',
+      version: info.version
+    });
+  }
+});
 
 const createWindow = (): void => {
   // Create the browser window
@@ -53,7 +115,19 @@ const createWindow = (): void => {
 };
 
 // App event listeners
-app.on('ready', createWindow);
+app.on('ready', () => {
+  createWindow();
+  
+  // Check for updates after a delay (5 seconds) to allow app to fully load
+  // Only check in production
+  if (process.env.NODE_ENV !== 'development') {
+    setTimeout(() => {
+      autoUpdater.checkForUpdates().catch((err: Error) => {
+        console.error('Failed to check for updates:', err);
+      });
+    }, 5000);
+  }
+});
 
 app.on('window-all-closed', () => {
   // On macOS, keep app running even when all windows are closed
@@ -208,4 +282,55 @@ ipcMain.handle('save-file', async (event, relativePath: string, data: Uint8Array
     console.error('Error saving file:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
+});
+
+// Auto-updater IPC handlers
+ipcMain.handle('check-for-updates', async () => {
+  try {
+    if (process.env.NODE_ENV === 'development') {
+      return { 
+        success: false, 
+        message: 'Updates not available in development mode' 
+      };
+    }
+    const result = await autoUpdater.checkForUpdates();
+    return { success: true, data: result };
+  } catch (error) {
+    console.error('Error checking for updates:', error);
+    return { 
+      success: false, 
+      message: error instanceof Error ? error.message : 'Unknown error checking for updates' 
+    };
+  }
+});
+
+ipcMain.handle('download-update', async () => {
+  try {
+    await autoUpdater.downloadUpdate();
+    return { success: true };
+  } catch (error) {
+    console.error('Error downloading update:', error);
+    return { 
+      success: false, 
+      message: error instanceof Error ? error.message : 'Unknown error downloading update' 
+    };
+  }
+});
+
+ipcMain.handle('install-update', async () => {
+  try {
+    // This will quit the app and install the update
+    autoUpdater.quitAndInstall(false, true);
+    return { success: true };
+  } catch (error) {
+    console.error('Error installing update:', error);
+    return { 
+      success: false, 
+      message: error instanceof Error ? error.message : 'Unknown error installing update' 
+    };
+  }
+});
+
+ipcMain.handle('get-app-version', async () => {
+  return app.getVersion();
 });

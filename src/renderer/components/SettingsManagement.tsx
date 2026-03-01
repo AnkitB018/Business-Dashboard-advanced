@@ -55,6 +55,9 @@ import {
   FolderOpen,
   Schedule,
   AutoMode,
+  SystemUpdate,
+  Download,
+  GetApp,
 } from '@mui/icons-material';
 import databaseService from '../services/DatabaseService';
 import { DatabaseConfig } from '../types/Common';
@@ -124,10 +127,28 @@ const SettingsManagement: React.FC = () => {
   const [nextAutoBackup, setNextAutoBackup] = useState<string>('');
   const [backupTimer, setBackupTimer] = useState<NodeJS.Timeout | null>(null);
 
+  // Update State
+  const [updateStatus, setUpdateStatus] = useState<{
+    status: 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error';
+    version?: string;
+    releaseNotes?: string;
+    releaseDate?: string;
+    progress?: {
+      percent: number;
+      transferred: number;
+      total: number;
+      bytesPerSecond: number;
+    };
+    error?: string;
+  }>({ status: 'idle' });
+  const [currentVersion, setCurrentVersion] = useState<string>('');
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+
   useEffect(() => {
     loadCurrentSettings();
     loadBackupHistory();
     loadAppSettings();
+    loadAppVersion();
   }, []);
 
   // Initialize backup scheduling when app settings change
@@ -141,6 +162,31 @@ const SettingsManagement: React.FC = () => {
       }
     };
   }, [appSettings.autoBackup, appSettings.backupFrequency, appSettings.backupTime]);
+
+  // Setup update status listener
+  useEffect(() => {
+    if (window.electronAPI?.onUpdateStatus) {
+      window.electronAPI.onUpdateStatus((status: any) => {
+        setUpdateStatus(status);
+        setIsCheckingUpdate(false);
+        
+        // Show notifications for update events
+        if (status.status === 'available') {
+          showSnackbar(`Update available: v${status.version}`, 'info');
+        } else if (status.status === 'downloaded') {
+          showSnackbar('Update downloaded and ready to install', 'success');
+        } else if (status.status === 'error') {
+          showSnackbar(`Update error: ${status.error}`, 'error');
+        }
+      });
+    }
+    
+    return () => {
+      if (window.electronAPI?.removeUpdateStatusListener) {
+        window.electronAPI.removeUpdateStatusListener();
+      }
+    };
+  }, []);
 
   const loadCurrentSettings = async () => {
     try {
@@ -706,6 +752,73 @@ const SettingsManagement: React.FC = () => {
     }
   };
 
+  // Load app version
+  const loadAppVersion = async () => {
+    try {
+      if (window.electronAPI?.getAppVersion) {
+        const version = await window.electronAPI.getAppVersion();
+        setCurrentVersion(version);
+      }
+    } catch (error) {
+      console.error('Error loading app version:', error);
+    }
+  };
+
+  // Check for updates
+  const checkForUpdates = async () => {
+    try {
+      setIsCheckingUpdate(true);
+      setUpdateStatus({ status: 'checking' });
+      
+      if (window.electronAPI?.checkForUpdates) {
+        const result = await window.electronAPI.checkForUpdates();
+        if (!result.success) {
+          setUpdateStatus({ status: 'error', error: result.message });
+          showSnackbar(result.message || 'Failed to check for updates', 'error');
+        }
+      } else {
+        setUpdateStatus({ status: 'error', error: 'Update API not available' });
+        showSnackbar('Update checking is not available', 'warning');
+      }
+    } catch (error: any) {
+      console.error('Error checking for updates:', error);
+      setUpdateStatus({ status: 'error', error: error.message });
+      showSnackbar('Error checking for updates: ' + error.message, 'error');
+    } finally {
+      setIsCheckingUpdate(false);
+    }
+  };
+
+  // Download update
+  const downloadUpdate = async () => {
+    try {
+      if (window.electronAPI?.downloadUpdate) {
+        const result = await window.electronAPI.downloadUpdate();
+        if (!result.success) {
+          showSnackbar(result.message || 'Failed to download update', 'error');
+        }
+      }
+    } catch (error: any) {
+      console.error('Error downloading update:', error);
+      showSnackbar('Error downloading update: ' + error.message, 'error');
+    }
+  };
+
+  // Install update
+  const installUpdate = async () => {
+    try {
+      if (window.electronAPI?.installUpdate) {
+        const result = await window.electronAPI.installUpdate();
+        if (!result.success) {
+          showSnackbar(result.message || 'Failed to install update', 'error');
+        }
+      }
+    } catch (error: any) {
+      console.error('Error installing update:', error);
+      showSnackbar('Error installing update: ' + error.message, 'error');
+    }
+  };
+
   const hasUnsavedChanges = () => {
     return JSON.stringify(dbConfig) !== JSON.stringify(originalDbConfig);
   };
@@ -1103,6 +1216,162 @@ const SettingsManagement: React.FC = () => {
             </ListItemSecondaryAction>
           </ListItem>
         </List>
+      </Paper>
+
+      {/* App Updates Section */}
+      <Paper sx={{ p: 3, mt: 3 }}>
+        <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <SystemUpdate color="primary" />
+          Application Updates
+        </Typography>
+        <Divider sx={{ mb: 3 }} />
+
+        {/* Current Version */}
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="body1" color="text.secondary" gutterBottom>
+            Current Version
+          </Typography>
+          <Chip 
+            label={currentVersion || 'Loading...'} 
+            color="primary" 
+            variant="outlined"
+            sx={{ fontWeight: 'bold' }}
+          />
+        </Box>
+
+        {/* Update Status */}
+        <Box sx={{ mb: 3 }}>
+          {updateStatus.status === 'idle' && (
+            <Alert severity="info">
+              Click "Check for Updates" to see if a new version is available.
+            </Alert>
+          )}
+
+          {updateStatus.status === 'checking' && (
+            <Alert severity="info" icon={<CircularProgress size={20} />}>
+              Checking for updates...
+            </Alert>
+          )}
+
+          {updateStatus.status === 'available' && (
+            <Alert severity="success">
+              <Typography variant="body2">
+                <strong>Update Available: v{updateStatus.version}</strong><br />
+                {updateStatus.releaseDate && `Released: ${new Date(updateStatus.releaseDate).toLocaleDateString()}`}<br />
+                {updateStatus.releaseNotes && (
+                  <>
+                    <br />
+                    <strong>What's New:</strong><br />
+                    {updateStatus.releaseNotes}
+                  </>
+                )}
+              </Typography>
+            </Alert>
+          )}
+
+          {updateStatus.status === 'not-available' && (
+            <Alert severity="success" icon={<CheckCircle />}>
+              You are running the latest version!
+            </Alert>
+          )}
+
+          {updateStatus.status === 'downloading' && updateStatus.progress && (
+            <Box>
+              <Alert severity="info" icon={<Download />}>
+                Downloading update... {Math.round(updateStatus.progress.percent)}%
+              </Alert>
+              <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={{ flex: 1 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      {(updateStatus.progress.transferred / 1024 / 1024).toFixed(2)} MB / {(updateStatus.progress.total / 1024 / 1024).toFixed(2)} MB
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {(updateStatus.progress.bytesPerSecond / 1024).toFixed(0)} KB/s
+                    </Typography>
+                  </Box>
+                  <Box 
+                    sx={{ 
+                      width: '100%', 
+                      height: 8, 
+                      bgcolor: 'grey.300', 
+                      borderRadius: 1,
+                      overflow: 'hidden'
+                    }}
+                  >
+                    <Box 
+                      sx={{ 
+                        width: `${updateStatus.progress.percent}%`, 
+                        height: '100%', 
+                        bgcolor: 'primary.main',
+                        transition: 'width 0.3s ease'
+                      }} 
+                    />
+                  </Box>
+                </Box>
+              </Box>
+            </Box>
+          )}
+
+          {updateStatus.status === 'downloaded' && (
+            <Alert severity="success" icon={<GetApp />}>
+              <Typography variant="body2">
+                <strong>Update downloaded successfully!</strong><br />
+                The update will be installed when you restart the application.
+              </Typography>
+            </Alert>
+          )}
+
+          {updateStatus.status === 'error' && (
+            <Alert severity="error">
+              <Typography variant="body2">
+                <strong>Update Error:</strong><br />
+                {updateStatus.error || 'An unknown error occurred'}
+              </Typography>
+            </Alert>
+          )}
+        </Box>
+
+        {/* Update Actions */}
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          <Button
+            variant="contained"
+            onClick={checkForUpdates}
+            disabled={isCheckingUpdate || updateStatus.status === 'checking' || updateStatus.status === 'downloading'}
+            startIcon={isCheckingUpdate ? <CircularProgress size={20} /> : <Refresh />}
+          >
+            {isCheckingUpdate ? 'Checking...' : 'Check for Updates'}
+          </Button>
+
+          {updateStatus.status === 'available' && (
+            <Button
+              variant="contained"
+              color="success"
+              onClick={downloadUpdate}
+              startIcon={<Download />}
+            >
+              Download Update
+            </Button>
+          )}
+
+          {updateStatus.status === 'downloaded' && (
+            <Button
+              variant="contained"
+              color="success"
+              onClick={installUpdate}
+              startIcon={<GetApp />}
+            >
+              Install and Restart
+            </Button>
+          )}
+        </Box>
+
+        {/* Auto-update Info */}
+        <Alert severity="info" sx={{ mt: 3 }}>
+          <Typography variant="body2">
+            The application automatically checks for updates on startup. You can also manually check for updates at any time using the button above.
+          </Typography>
+        </Alert>
       </Paper>
 
       {/* Confirmation Dialog */}

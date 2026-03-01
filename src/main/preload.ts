@@ -16,6 +16,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // File system operations
   openPath: (folderPath: string) => ipcRenderer.invoke('open-path', folderPath),
   saveFile: (relativePath: string, data: Uint8Array) => ipcRenderer.invoke('save-file', relativePath, data),
+  
+  // Auto-updater operations
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+  downloadUpdate: () => ipcRenderer.invoke('download-update'),
+  installUpdate: () => ipcRenderer.invoke('install-update'),
+  getAppVersion: () => ipcRenderer.invoke('get-app-version'),
+  onUpdateStatus: (callback: (status: any) => void) => {
+    ipcRenderer.on('update-status', (event, status) => callback(status));
+  },
+  removeUpdateStatusListener: () => {
+    ipcRenderer.removeAllListeners('update-status');
+  },
 });
 
 // Type definitions for TypeScript
@@ -29,6 +41,12 @@ declare global {
       showOpenDialog: (options: any) => Promise<any>;
       openPath: (folderPath: string) => Promise<{ success: boolean; path?: string; error?: string }>;
       saveFile: (relativePath: string, data: Uint8Array) => Promise<{ success: boolean; filePath?: string; error?: string }>;
+      checkForUpdates: () => Promise<{ success: boolean; data?: any; message?: string }>;
+      downloadUpdate: () => Promise<{ success: boolean; message?: string }>;
+      installUpdate: () => Promise<{ success: boolean; message?: string }>;
+      getAppVersion: () => Promise<string>;
+      onUpdateStatus: (callback: (status: any) => void) => void;
+      removeUpdateStatusListener: () => void;
     };
   }
 }
