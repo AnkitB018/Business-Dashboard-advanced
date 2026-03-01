@@ -108,9 +108,7 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = () => {
   const loadEmployees = async () => {
     setLoading(true);
     try {
-      console.log('Loading employees...');
       const employeeList = await dbService.getEmployees();
-      console.log('Loaded employees:', employeeList);
       setEmployees(employeeList);
       showSnackbar(`Loaded ${employeeList.length} employees successfully`, 'success');
     } catch (error) {

@@ -369,7 +369,7 @@ const PurchaseManagement: React.FC = () => {
   const paidPurchases = filteredPurchases.filter(p => p.payment_status === 'Paid').length;
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box>
       <Typography variant="h4" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <ShoppingBag color="primary" />
         Purchase Management

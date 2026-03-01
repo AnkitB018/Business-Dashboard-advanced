@@ -104,15 +104,11 @@ ipcMain.handle('db-operation', async (event, operation: string, collection: stri
         // Try to convert to ObjectId if it's a valid 24-char hex string
         if (typeof idValue === 'string' && /^[0-9a-fA-F]{24}$/.test(idValue)) {
           obj._id = new ObjectId(idValue);
-          console.log('Converted string ID to ObjectId:', idValue);
         } else if (typeof idValue === 'object' && idValue.$oid) {
           obj._id = new ObjectId(idValue.$oid);
-          console.log('Converted $oid to ObjectId:', idValue.$oid);
-        } else {
-          console.log('Keeping ID as-is:', typeof idValue, idValue);
         }
       } catch (e) {
-        console.log('ID conversion failed, keeping as-is:', e);
+        // Keep ID as-is if conversion fails
       }
     }
     return obj;

@@ -479,7 +479,7 @@ const SalesManagement: React.FC = () => {
   const averageOrderValue = totalSales > 0 ? totalRevenue / totalSales : 0;
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box>
       <Typography variant="h4" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <AttachMoney color="primary" />
         Sales Management

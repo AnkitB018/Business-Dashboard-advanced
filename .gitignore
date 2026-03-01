@@ -199,3 +199,18 @@ tramp
 
 # Local development
 .local/
+Business-Dashboard - OLD/
+
+# Documentation and development files
+*.md
+!README.md
+mintty.*.png
+*.png
+*.jpg
+*.jpeg
+*.gif
+
+# Test files
+*Test.tsx
+*Test.ts
+__tests__/

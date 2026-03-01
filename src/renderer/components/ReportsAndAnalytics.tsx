@@ -1040,7 +1040,7 @@ const ReportsAndAnalytics: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box>
       <Typography variant="h4" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <Assessment color="primary" />
         Reports & Analytics

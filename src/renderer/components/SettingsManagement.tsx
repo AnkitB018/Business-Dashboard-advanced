@@ -711,7 +711,7 @@ const SettingsManagement: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box>
       <Typography variant="h4" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <Settings color="primary" />
         Settings Management
