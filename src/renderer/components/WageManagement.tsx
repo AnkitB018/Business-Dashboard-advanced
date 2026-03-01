@@ -463,6 +463,22 @@ const WageManagement: React.FC = () => {
           calculatedAmount = (totalEarned * bonusRate) / 100;
         }
 
+        // Get existing payouts for this employee in this period
+        const allPayouts = await databaseService.getAllPayouts();
+        const existingPayouts = allPayouts.filter((payout: any) => 
+          payout.employeeId === employeeData._id &&
+          payout.payout_type === type &&
+          payout.payout_date >= startDate &&
+          payout.payout_date <= endDate
+        );
+        
+        // Calculate paid amount
+        const paidAmount = existingPayouts.reduce((sum: number, payout: any) => 
+          sum + (payout.actual_amount || 0), 0
+        );
+        
+        const remainingAmount = Math.max(0, calculatedAmount - paidAmount);
+
         payoutData.push({
           employeeId: employeeData._id,
           employeeIdNumber: employeeData.employee_id,
@@ -472,7 +488,9 @@ const WageManagement: React.FC = () => {
           effectiveHours,
           dailyWage,
           calculatedAmount,
-          payoutAmount: calculatedAmount,
+          paidAmount,
+          remainingAmount,
+          payoutAmount: remainingAmount,
           selected: false
         });
       }
@@ -1015,6 +1033,8 @@ const WageManagement: React.FC = () => {
                     <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Exception Hrs</TableCell>
                     <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Daily Wage</TableCell>
                     <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Calculated</TableCell>
+                    <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Paid</TableCell>
+                    <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Remaining</TableCell>
                     <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Payout Amount</TableCell>
                   </TableRow>
                 </TableHead>
@@ -1067,6 +1087,19 @@ const WageManagement: React.FC = () => {
                         <Typography variant="body2" fontWeight="bold" color="primary">
                           {formatCurrency(emp.calculatedAmount)}
                         </Typography>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Typography variant="body2" fontWeight="medium" color={emp.paidAmount > 0 ? "success.main" : "text.secondary"}>
+                          {formatCurrency(emp.paidAmount)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Chip 
+                          label={formatCurrency(emp.remainingAmount)}
+                          size="small"
+                          color={emp.remainingAmount > 0 ? "warning" : "success"}
+                          sx={{ fontWeight: 'bold', minWidth: 100 }}
+                        />
                       </TableCell>
                       <TableCell align="right">
                         <TextField
