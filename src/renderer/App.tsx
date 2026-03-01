@@ -1,13 +1,13 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import { Box, Typography, Paper, CircularProgress } from '@mui/material';
+import { Box, Typography, Paper, CircularProgress, Chip, Divider } from '@mui/material';
+import { Dashboard as DashboardIcon, CalendarToday, People, TrendingUp, AccountBalance, Today } from '@mui/icons-material';
 import MainLayout from './components/MainLayout';
 import DatabaseSetupDialog from './components/DatabaseSetupDialog';
 import EmployeeManagement from './components/EmployeeManagement';
 import AttendanceManagement from './components/AttendanceManagement';
 import SalesManagement from './components/SalesManagement';
-import SimpleSalesTest from './components/SimpleSalesTest';
 import PurchaseManagement from './components/PurchaseManagement';
 import ReportsAndAnalytics from './components/ReportsAndAnalytics';
 import WageManagement from './components/WageManagement';
@@ -139,21 +139,16 @@ function App() {
 
   const initializeApp = async () => {
     try {
-      console.log('Initializing app...');
       // Check if database is configured
       const config = await dbService.getConfig();
-      console.log('Retrieved config during init:', config);
       
       if (!config || !config.connectionString) {
-        console.log('No config found, showing first time setup');
         // First time setup
         setIsFirstTime(true);
         setShowDatabaseSetup(true);
       } else {
-        console.log('Config found, testing connection...');
         // Test existing connection
         const isConnected = await dbService.testConnection(config);
-        console.log('Connection test result:', isConnected);
         setConnectionStatus({
           isConnected,
           lastConnected: isConnected ? new Date() : undefined,
@@ -161,10 +156,7 @@ function App() {
         });
         
         if (!isConnected) {
-          console.log('Connection failed, showing database setup');
           setShowDatabaseSetup(true);
-        } else {
-          console.log('Connection successful, app ready');
         }
       }
     } catch (error) {
@@ -186,8 +178,6 @@ function App() {
         });
         setShowDatabaseSetup(false);
         setIsFirstTime(false);
-        
-        console.log('Database connected successfully, status updated');
       } else {
         setConnectionStatus({
           isConnected: false,
@@ -329,47 +319,80 @@ const DashboardPage = ({ onNavigate }: { onNavigate: (page: string) => void }) =
   const [stats, setStats] = useState({
     totalEmployees: 0,
     activeEmployees: 0,
+    resignedEmployees: 0,
     todayAttendance: 0,
-    monthlySales: 0
+    todayAbsent: 0,
+    monthlyPayouts: 0,
+    totalPayoutsAmount: 0,
+    avgWagePerEmployee: 0
   });
   const [loading, setLoading] = useState(true);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [dbConnected, setDbConnected] = useState<boolean>(false);
+  const [dbError, setDbError] = useState<string | null>(null);
 
   useEffect(() => {
     loadDashboardData();
+    // Update date every minute
+    const timer = setInterval(() => {
+      setCurrentDate(new Date());
+    }, 60000);
+    return () => clearInterval(timer);
   }, []);
 
   const loadDashboardData = async () => {
     try {
+      setDbError(null);
+      
       // Load employee statistics
       const employees = await databaseService.getAllEmployees();
-      const activeEmployees = employees.filter((emp: any) => emp.status === 'active');
+      const activeEmployees = employees.filter((emp: any) => emp.employment_status === 'active');
+      const resignedEmployees = employees.filter((emp: any) => emp.employment_status === 'resigned');
       
       // Load today's attendance
       const today = new Date().toISOString().split('T')[0];
       const allAttendance = await databaseService.getAllAttendance();
+      
       const todaysAttendance = allAttendance.filter((att: any) => {
         const attDate = new Date(att.date).toISOString().split('T')[0];
         return attDate === today && att.status === 'Present';
       });
+      const todaysAbsent = allAttendance.filter((att: any) => {
+        const attDate = new Date(att.date).toISOString().split('T')[0];
+        return attDate === today && att.status === 'Absent';
+      });
       
-      // Load monthly sales
-      const allSales = await databaseService.getAllSales();
+      // Load monthly wage payouts
+      const allPayouts = await databaseService.getAllPayouts();
+      
       const currentMonth = new Date().getMonth();
       const currentYear = new Date().getFullYear();
-      const monthlySalesData = allSales.filter((sale: any) => {
-        const saleDate = new Date(sale.saleDate || sale.date);
-        return saleDate.getMonth() === currentMonth && saleDate.getFullYear() === currentYear;
+      const monthlyPayouts = allPayouts.filter((payout: any) => {
+        // Use payout_date field from PayoutRecord interface
+        const payoutDate = new Date(payout.payout_date);
+        return payoutDate.getMonth() === currentMonth && payoutDate.getFullYear() === currentYear;
       });
-      const totalMonthlySales = monthlySalesData.reduce((sum: number, sale: any) => sum + (sale.totalAmount || 0), 0);
+      
+      // Use actual_amount field from PayoutRecord interface
+      const totalPayoutsAmount = monthlyPayouts.reduce((sum: number, payout: any) => sum + (payout.actual_amount || 0), 0);
+      const avgWagePerEmployee = activeEmployees.length > 0 ? totalPayoutsAmount / activeEmployees.length : 0;
       
       setStats({
         totalEmployees: employees.length,
         activeEmployees: activeEmployees.length,
+        resignedEmployees: resignedEmployees.length,
         todayAttendance: todaysAttendance.length,
-        monthlySales: totalMonthlySales
+        todayAbsent: todaysAbsent.length,
+        monthlyPayouts: monthlyPayouts.length,
+        totalPayoutsAmount: totalPayoutsAmount,
+        avgWagePerEmployee: avgWagePerEmployee
       });
+      
+      setDbConnected(true);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
+      setDbConnected(false);
+      setDbError(error instanceof Error ? error.message : 'Failed to load data');
     } finally {
       setLoading(false);
     }
@@ -383,89 +406,152 @@ const DashboardPage = ({ onNavigate }: { onNavigate: (page: string) => void }) =
     );
   }
 
+  const formatDate = () => {
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    return {
+      day: days[currentDate.getDay()],
+      date: currentDate.getDate(),
+      month: months[currentDate.getMonth()],
+      year: currentDate.getFullYear()
+    };
+  };
+
+  const dateInfo = formatDate();
+
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom sx={{ mb: 4 }}>
-        📊 Business Dashboard
-      </Typography>
-      
-      {/* Key Metrics Cards (compact) */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 2, mb: 3 }}>
-        <Paper sx={{ 
-          p: 3, 
-          textAlign: 'center', 
-          background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.98) 100%)',
-          border: '1px solid rgba(220, 38, 38, 0.1)',
-          borderRadius: '8px',
-          boxShadow: '0 8px 24px rgba(220, 38, 38, 0.08)',
-          backdropFilter: 'blur(10px)',
-        }}>
-          <Typography variant="h5" fontWeight={700} sx={{ 
-            color: 'transparent', 
-            background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)',
-            backgroundClip: 'text',
-            WebkitBackgroundClip: 'text',
-            mb: 0.5 
-          }}>{stats.totalEmployees}</Typography>
-          <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 500 }}>Total Employees</Typography>
+    <Box>
+      {/* Header with Date and Connection Status */}
+      <Box sx={{ mb: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Typography variant="h4" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <DashboardIcon color="primary" />
+              Business Dashboard
+            </Typography>
+            <Chip 
+              label={dbConnected ? "Database Connected" : "Database Disconnected"}
+              color={dbConnected ? "success" : "error"}
+              size="small"
+              sx={{ fontWeight: 500 }}
+            />
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Today color="primary" />
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
+                {dateInfo.day}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.2 }}>
+                {dateInfo.date} {dateInfo.month} {dateInfo.year}
+              </Typography>
+            </Box>
+          </Box>
+        </Box>
+        {dbError && (
+          <Box sx={{ mt: 1 }}>
+            <Chip 
+              label={`Error: ${dbError}`}
+              color="error"
+              size="small"
+              variant="outlined"
+            />
+          </Box>
+        )}
+      </Box>
+
+      {/* Statistics Section - Employee & Wage Stats (30% of page) */}
+      <Box sx={{ maxWidth: '100%' }}>
+        {/* Employee Statistics */}
+        <Paper sx={{ p: 2.5, mb: 2 }}>
+          <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+            <People color="primary" />
+            Employee Statistics
+          </Typography>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2 }}>
+            <Box sx={{ textAlign: 'center', p: 1.5, bgcolor: 'grey.50', borderRadius: 1 }}>
+              <Typography variant="h4" fontWeight={700} color="primary">
+                {stats.totalEmployees}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">Total Employees</Typography>
+            </Box>
+            <Box sx={{ textAlign: 'center', p: 1.5, bgcolor: 'grey.50', borderRadius: 1 }}>
+              <Typography variant="h4" fontWeight={700} sx={{ color: '#16a34a' }}>
+                {stats.activeEmployees}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">Active Employees</Typography>
+            </Box>
+            <Box sx={{ textAlign: 'center', p: 1.5, bgcolor: 'grey.50', borderRadius: 1 }}>
+              <Typography variant="h4" fontWeight={700} sx={{ color: '#dc2626' }}>
+                {stats.resignedEmployees}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">Resigned Employees</Typography>
+            </Box>
+          </Box>
         </Paper>
-        
-        <Paper sx={{ 
-          p: 3, 
-          textAlign: 'center', 
-          background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.98) 100%)',
-          border: '1px solid rgba(220, 38, 38, 0.1)',
-          borderRadius: '8px',
-          boxShadow: '0 8px 24px rgba(220, 38, 38, 0.08)',
-          backdropFilter: 'blur(10px)',
-        }}>
-          <Typography variant="h5" fontWeight={700} sx={{ 
-            color: 'transparent', 
-            background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)',
-            backgroundClip: 'text',
-            WebkitBackgroundClip: 'text',
-            mb: 0.5 
-          }}>{stats.activeEmployees}</Typography>
-          <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 500 }}>Active Employees</Typography>
+
+        {/* Today's Attendance */}
+        <Paper sx={{ p: 2.5, mb: 2 }}>
+          <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+            <CalendarToday color="primary" />
+            Today's Attendance
+          </Typography>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2 }}>
+            <Box sx={{ textAlign: 'center', p: 1.5, bgcolor: 'grey.50', borderRadius: 1 }}>
+              <Typography variant="h4" fontWeight={700} sx={{ color: '#16a34a' }}>
+                {stats.todayAttendance}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">Present</Typography>
+            </Box>
+            <Box sx={{ textAlign: 'center', p: 1.5, bgcolor: 'grey.50', borderRadius: 1 }}>
+              <Typography variant="h4" fontWeight={700} sx={{ color: '#dc2626' }}>
+                {stats.todayAbsent}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">Absent</Typography>
+            </Box>
+            <Box sx={{ textAlign: 'center', p: 1.5, bgcolor: 'grey.50', borderRadius: 1 }}>
+              <Typography variant="h4" fontWeight={700} color="primary">
+                {stats.activeEmployees > 0 ? Math.round((stats.todayAttendance / stats.activeEmployees) * 100) : 0}%
+              </Typography>
+              <Typography variant="body2" color="text.secondary">Attendance Rate</Typography>
+            </Box>
+          </Box>
         </Paper>
-        
-        <Paper sx={{ 
-          p: 3, 
-          textAlign: 'center', 
-          background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.98) 100%)',
-          border: '1px solid rgba(220, 38, 38, 0.1)',
-          borderRadius: '8px',
-          boxShadow: '0 8px 24px rgba(220, 38, 38, 0.08)',
-          backdropFilter: 'blur(10px)',
-        }}>
-          <Typography variant="h5" fontWeight={700} sx={{ 
-            color: 'transparent', 
-            background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)',
-            backgroundClip: 'text',
-            WebkitBackgroundClip: 'text',
-            mb: 0.5 
-          }}>{stats.todayAttendance}</Typography>
-          <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 500 }}>Today's Attendance</Typography>
+
+        {/* Wage Statistics */}
+        <Paper sx={{ p: 2.5, mb: 2 }}>
+          <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+            <AccountBalance color="primary" />
+            Wage Statistics (This Month)
+          </Typography>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2 }}>
+            <Box sx={{ textAlign: 'center', p: 1.5, bgcolor: 'grey.50', borderRadius: 1 }}>
+              <Typography variant="h4" fontWeight={700} color="primary">
+                {stats.monthlyPayouts}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">Total Payouts</Typography>
+            </Box>
+            <Box sx={{ textAlign: 'center', p: 1.5, bgcolor: 'grey.50', borderRadius: 1 }}>
+              <Typography variant="h4" fontWeight={700} sx={{ color: '#16a34a' }}>
+                ₹{stats.totalPayoutsAmount.toLocaleString('en-IN')}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">Total Amount Paid</Typography>
+            </Box>
+            <Box sx={{ textAlign: 'center', p: 1.5, bgcolor: 'grey.50', borderRadius: 1 }}>
+              <Typography variant="h4" fontWeight={700} color="primary">
+                ₹{Math.round(stats.avgWagePerEmployee).toLocaleString('en-IN')}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">Avg per Employee</Typography>
+            </Box>
+          </Box>
         </Paper>
-        
-        <Paper sx={{ 
-          p: 3, 
-          textAlign: 'center', 
-          background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.98) 100%)',
-          border: '1px solid rgba(220, 38, 38, 0.1)',
-          borderRadius: '8px',
-          boxShadow: '0 8px 24px rgba(220, 38, 38, 0.08)',
-          backdropFilter: 'blur(10px)',
-        }}>
-          <Typography variant="h5" fontWeight={700} sx={{ 
-            color: 'transparent', 
-            background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)',
-            backgroundClip: 'text',
-            WebkitBackgroundClip: 'text',
-            mb: 0.5 
-          }}>₹{stats.monthlySales.toLocaleString()}</Typography>
-          <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 500 }}>Monthly Sales</Typography>
-        </Paper>
+
+        {/* Placeholder for future stats */}
+        <Box sx={{ p: 3, textAlign: 'center', border: '2px dashed', borderColor: 'grey.300', borderRadius: 2, bgcolor: 'grey.50' }}>
+          <Typography variant="body1" color="text.secondary">
+            Sales & Purchase Statistics (Coming Soon)
+          </Typography>
+        </Box>
       </Box>
     </Box>
   );

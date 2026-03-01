@@ -694,16 +694,10 @@ const WageManagement: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom sx={{ 
-        fontWeight: 600,
-        background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)',
-        backgroundClip: 'text',
-        WebkitBackgroundClip: 'text',
-        color: 'transparent',
-        mb: 3
-      }}>
-        💰 Wage & Bonus Management
+    <Box>
+      <Typography variant="h4" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <PaymentIcon color="primary" />
+        Wage & Bonus Management
       </Typography>
 
       <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>

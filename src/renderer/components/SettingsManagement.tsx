@@ -711,19 +711,9 @@ const SettingsManagement: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom sx={{ 
-        background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)',
-        backgroundClip: 'text',
-        WebkitBackgroundClip: 'text',
-        color: 'transparent',
-        fontWeight: 'bold',
-        mb: 3,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 2
-      }}>
-        <Settings sx={{ color: '#dc2626' }} />
+    <Box>
+      <Typography variant="h4" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Settings color="primary" />
         Settings Management
       </Typography>
 

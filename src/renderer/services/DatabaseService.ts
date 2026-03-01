@@ -345,10 +345,8 @@ class DatabaseService {
   async getConfig(): Promise<DatabaseConfig | null> {
     try {
       const configStr = localStorage.getItem('database-config');
-      console.log('Getting database config from localStorage:', configStr);
       if (configStr) {
         const config = JSON.parse(configStr);
-        console.log('Parsed config:', config);
         
         // Handle backward compatibility - if old format, convert it
         if (config.connectionString && !config.username) {
@@ -383,7 +381,6 @@ class DatabaseService {
           connectionString: config.connectionString || ''
         };
       }
-      console.log('No database config found in localStorage');
       return null;
     } catch (error) {
       console.error('Error reading database config:', error);
@@ -396,7 +393,6 @@ class DatabaseService {
       const result = await this.connect(config);
       if (result.success) {
         this.isConnected = true;
-        console.log('Database service connected successfully');
       }
       return result.success;
     } catch (error) {
@@ -416,13 +412,11 @@ class DatabaseService {
       };
       
       localStorage.setItem('database-config', JSON.stringify(configWithConnectionString));
-      console.log('Database config updated in localStorage:', configWithConnectionString);
       
       // Test the new configuration
       const result = await this.connect(configWithConnectionString);
       if (result.success) {
         this.isConnected = true;
-        console.log('Database config updated and connection verified');
       } else {
         throw new Error('Failed to connect with new configuration: ' + result.message);
       }
@@ -434,8 +428,6 @@ class DatabaseService {
 
   async saveConfig(config: DatabaseConfig): Promise<boolean> {
     try {
-      console.log('Saving database config:', config);
-      
       // Generate connection string from individual fields if not provided
       const configWithConnectionString = {
         ...config,
@@ -444,10 +436,6 @@ class DatabaseService {
       };
       
       localStorage.setItem('database-config', JSON.stringify(configWithConnectionString));
-      console.log('Database config saved successfully');
-      // Verify it was saved
-      const saved = localStorage.getItem('database-config');
-      console.log('Verification - saved config:', saved);
       return true;
     } catch (error) {
       console.error('Error saving database config:', error);
@@ -812,8 +800,6 @@ class DatabaseService {
       for (const purchase of samplePurchases) {
         await this.addPurchase(purchase);
       }
-
-      console.log('Sample data seeded successfully');
     } catch (error) {
       console.error('Error seeding sample data:', error);
       throw error;

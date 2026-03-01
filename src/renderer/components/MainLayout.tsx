@@ -11,8 +11,6 @@ import {
   ListItemIcon,
   ListItemText,
   IconButton,
-  Menu,
-  MenuItem,
   Avatar,
   Divider,
   Tooltip
@@ -27,8 +25,6 @@ import {
   Inventory,
   Assessment,
   Settings,
-  AccountCircle,
-  ExitToApp,
   ChevronLeft,
   ChevronRight
 } from '@mui/icons-material';
@@ -50,7 +46,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({
 }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [drawerCollapsed, setDrawerCollapsed] = useState(false);
-  const [anchorElUser, setAnchorElUser] = useState<null | HTMLElement>(null);
 
   const navigationItems: NavigationItem[] = [
     {
@@ -124,16 +119,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   const handleDrawerCollapse = () => {
     setDrawerCollapsed(!drawerCollapsed);
   };
-
-  const handleUserMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorElUser(event.currentTarget);
-  };
-
-  const handleUserMenuClose = () => {
-    setAnchorElUser(null);
-  };
-
-
 
   const handleNavigate = (itemId: string) => {
     onNavigate(itemId);
@@ -276,17 +261,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             {navigationItems.find(item => item.id === currentPage)?.title || 'Dashboard'}
           </Typography>
-
-          {/* User Menu */}
-          <Tooltip title="Account settings">
-            <IconButton
-              size="large"
-              onClick={handleUserMenuOpen}
-              color="inherit"
-            >
-              <AccountCircle />
-            </IconButton>
-          </Tooltip>
         </Toolbar>
       </AppBar>
 
@@ -360,44 +334,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({
           {children}
         </Box>
       </Box>
-
-      {/* User Menu */}
-      <Menu
-        anchorEl={anchorElUser}
-        anchorOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-        keepMounted
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-        open={Boolean(anchorElUser)}
-        onClose={handleUserMenuClose}
-      >
-        <MenuItem onClick={handleUserMenuClose}>
-          <ListItemIcon>
-            <AccountCircle fontSize="small" />
-          </ListItemIcon>
-          Profile
-        </MenuItem>
-        <MenuItem onClick={handleUserMenuClose}>
-          <ListItemIcon>
-            <Settings fontSize="small" />
-          </ListItemIcon>
-          Settings
-        </MenuItem>
-        <Divider />
-        <MenuItem onClick={handleUserMenuClose}>
-          <ListItemIcon>
-            <ExitToApp fontSize="small" />
-          </ListItemIcon>
-          Logout
-        </MenuItem>
-      </Menu>
-
-      {/* Notifications removed per user preference */}
     </Box>
   );
 };
