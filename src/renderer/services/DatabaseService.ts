@@ -22,6 +22,26 @@ interface AttendanceRecord {
   updatedAt?: Date;
 }
 
+interface PayoutRecord {
+  _id?: string;
+  employeeId: string;
+  employee_id: string;
+  employee_name: string;
+  payout_type: 'wage' | 'bonus';
+  period_start: string;
+  period_end: string;
+  payout_date: string;
+  total_hours?: number;
+  exception_hours?: number;
+  effective_hours?: number;
+  daily_wage?: number;
+  calculated_amount: number;
+  actual_amount: number;
+  notes?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 class DatabaseService {
   private isConnected = false;
 
@@ -207,6 +227,91 @@ class DatabaseService {
     const result = await window.electronAPI.dbOperation('deleteOne', 'attendance', { _id: id });
     if (!result.success) {
       throw new Error(result.message || 'Failed to delete attendance record');
+    }
+  }
+
+  // Payout operations
+  async getAllPayouts(): Promise<PayoutRecord[]> {
+    if (!this.isConnected) throw new Error('Database not connected');
+    
+    const result = await window.electronAPI.dbOperation('find', 'payouts');
+    if (result.success) {
+      return result.data || [];
+    }
+    throw new Error(result.message || 'Failed to fetch payouts');
+  }
+
+  async getPayoutsByEmployee(employeeId: string): Promise<PayoutRecord[]> {
+    if (!this.isConnected) throw new Error('Database not connected');
+    
+    const result = await window.electronAPI.dbOperation('find', 'payouts', { 
+      query: { employeeId: employeeId } 
+    });
+    if (result.success) {
+      return result.data || [];
+    }
+    throw new Error(result.message || 'Failed to fetch employee payouts');
+  }
+
+  async getPayoutsByDateRange(startDate: string, endDate: string): Promise<PayoutRecord[]> {
+    if (!this.isConnected) throw new Error('Database not connected');
+    
+    const result = await window.electronAPI.dbOperation('find', 'payouts', { 
+      query: { 
+        payout_date: {
+          $gte: startDate,
+          $lte: endDate
+        }
+      } 
+    });
+    if (result.success) {
+      return result.data || [];
+    }
+    throw new Error(result.message || 'Failed to fetch payouts for date range');
+  }
+
+  async addPayoutRecord(record: Omit<PayoutRecord, '_id'>): Promise<PayoutRecord> {
+    if (!this.isConnected) throw new Error('Database not connected');
+    
+    const newRecord = {
+      ...record,
+      _id: new Date().getTime().toString() + Math.random().toString(36).substr(2, 9),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    const result = await window.electronAPI.dbOperation('insertOne', 'payouts', newRecord);
+    if (result.success) {
+      return newRecord as PayoutRecord;
+    }
+    throw new Error(result.message || 'Failed to add payout record');
+  }
+
+  async updatePayoutRecord(id: string, record: Partial<PayoutRecord>): Promise<PayoutRecord> {
+    if (!this.isConnected) throw new Error('Database not connected');
+    
+    const updateData = {
+      ...record,
+      updatedAt: new Date()
+    };
+
+    const result = await window.electronAPI.dbOperation('updateOne', 'payouts', {
+      filter: { _id: id },
+      update: updateData
+    });
+
+    if (result.success) {
+      return { ...record, _id: id } as PayoutRecord;
+    }
+    throw new Error(result.message || 'Failed to update payout record');
+  }
+
+  async deletePayoutRecord(id: string): Promise<void> {
+    if (!this.isConnected) throw new Error('Database not connected');
+    
+    const result = await window.electronAPI.dbOperation('deleteOne', 'payouts', { _id: id });
+    if (!result.success) {
+      throw new Error(result.message || 'Failed to delete payout record');
     }
   }
 
@@ -1057,5 +1162,6 @@ export const prepareConfigForConnection = (config: DatabaseConfig): DatabaseConf
   };
 };
 
+export type { PayoutRecord };
 export const databaseService = new DatabaseService();
 export default databaseService;
