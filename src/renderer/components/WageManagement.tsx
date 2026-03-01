@@ -202,17 +202,17 @@ const WageManagement: React.FC = () => {
       for (const employee of employeesToCalculate) {
         const employeeData = employee as any;
         
-        // Get attendance records for the period
+        // Get attendance records for the period (use MongoDB _id as employeeId)
         const attendanceRecords = await databaseService.getAttendanceByEmployeeAndDateRange(
-          employeeData.employee_id,
+          employeeData._id,
           wageCalculationPeriod.startDate,
           wageCalculationPeriod.endDate
         );
 
         let totalHours = 0;
-        let exceptionHours = 1.0; // Hardcoded exception hours as per Python logic
+        let totalBreakHours = 0; // Accumulate break time from attendance records
         
-        // Calculate total hours from attendance records
+        // Calculate total hours and break hours from attendance records
         for (const record of attendanceRecords) {
           const recordData = record as any;
           if (recordData.check_in_time && recordData.check_out_time) {
@@ -225,10 +225,15 @@ const WageManagement: React.FC = () => {
             // Default to 8 hours for present days without time data
             totalHours += 8;
           }
+          
+          // Accumulate break time from each record
+          if (recordData.break_time) {
+            totalBreakHours += recordData.break_time;
+          }
         }
 
         // Calculate effective hours and wage
-        const effectiveHours = Math.max(0, totalHours - (exceptionHours * attendanceRecords.length));
+        const effectiveHours = Math.max(0, totalHours - totalBreakHours);
         const dailyWage = employeeData.daily_wage || employeeData.salary || 0;
         const calculatedWage = (effectiveHours * dailyWage) / 8;
 
@@ -236,7 +241,7 @@ const WageManagement: React.FC = () => {
           employeeId: employeeData.employee_id || employeeData._id,
           employeeName: employeeData.name || 'Unknown',
           totalHours,
-          exceptionHours: exceptionHours * attendanceRecords.length,
+          exceptionHours: totalBreakHours,
           effectiveHours,
           dailyWage,
           calculatedWage,
@@ -267,9 +272,9 @@ const WageManagement: React.FC = () => {
       for (const employee of employeesToCalculate) {
         const employeeData = employee as any;
         
-        // Get attendance records for the bonus period
+        // Get attendance records for the bonus period (use MongoDB _id as employeeId)
         const attendanceRecords = await databaseService.getAttendanceByEmployeeAndDateRange(
-          employeeData.employee_id,
+          employeeData._id,
           bonusCalculationPeriod.startDate,
           bonusCalculationPeriod.endDate
         );
@@ -290,8 +295,9 @@ const WageManagement: React.FC = () => {
             hoursWorked = 8; // Default to 8 hours
           }
           
-          // Calculate daily earnings with exception hours
-          const effectiveHours = Math.max(0, hoursWorked - 1); // 1 hour exception
+          // Calculate daily earnings with break time from attendance record
+          const breakHours = recordData.break_time || 0;
+          const effectiveHours = Math.max(0, hoursWorked - breakHours);
           const dailyEarnings = (effectiveHours * dailyWage) / 8;
           totalEarned += dailyEarnings;
         }
