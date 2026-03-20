@@ -31,22 +31,6 @@ export interface EmployeeStatistics {
   };
 }
 
-// Business metrics interface
-export interface BusinessMetrics {
-  employees: EmployeeStatistics;
-  sales: {
-    totalOrders: number;
-    totalRevenue: number;
-    pendingOrders: number;
-    totalDueAmount: number;
-  };
-  purchases: {
-    totalPurchases: number;
-    totalExpense: number;
-    outstandingPayments: number;
-  };
-}
-
 // Filter interfaces for database queries
 export interface EmployeeFilter {
   department?: string;
@@ -61,22 +45,6 @@ export interface AttendanceFilter {
   dateFrom?: Date;
   dateTo?: Date;
   status?: string;
-}
-
-export interface SalesFilter {
-  customerName?: string;
-  dateFrom?: Date;
-  dateTo?: Date;
-  orderStatus?: string;
-  paymentMethod?: string;
-}
-
-export interface PurchaseFilter {
-  supplierName?: string;
-  dateFrom?: Date;
-  dateTo?: Date;
-  paymentStatus?: string;
-  category?: string;
 }
 
 // Application settings interface

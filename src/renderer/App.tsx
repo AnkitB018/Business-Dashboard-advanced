@@ -7,8 +7,6 @@ import MainLayout from './components/MainLayout';
 import DatabaseSetupDialog from './components/DatabaseSetupDialog';
 import EmployeeManagement from './components/EmployeeManagement';
 import AttendanceManagement from './components/AttendanceManagement';
-import SalesManagement from './components/SalesManagement';
-import PurchaseManagement from './components/PurchaseManagement';
 import ReportsAndAnalytics from './components/ReportsAndAnalytics';
 import WageManagement from './components/WageManagement';
 import SettingsManagement from './components/SettingsManagement';
@@ -210,10 +208,6 @@ function App() {
         return <WagesPage />;
       case 'attendance':
         return <AttendancePage />;
-      case 'sales':
-        return <SalesPage />;
-      case 'purchases':
-        return <PurchasesPage />;
       case 'reports':
         return <ReportsPage />;
       case 'settings':
@@ -546,12 +540,6 @@ const DashboardPage = ({ onNavigate }: { onNavigate: (page: string) => void }) =
           </Box>
         </Paper>
 
-        {/* Placeholder for future stats */}
-        <Box sx={{ p: 3, textAlign: 'center', border: '2px dashed', borderColor: 'grey.300', borderRadius: 2, bgcolor: 'grey.50' }}>
-          <Typography variant="body1" color="text.secondary">
-            Sales & Purchase Statistics (Coming Soon)
-          </Typography>
-        </Box>
       </Box>
     </Box>
   );
@@ -562,10 +550,6 @@ const EmployeesPage = () => <EmployeeManagement />;
 const WagesPage = () => <WageManagement />;
 
 const AttendancePage = () => <AttendanceManagement />;
-
-const SalesPage = () => <SalesManagement />;
-
-const PurchasesPage = () => <PurchaseManagement />;
 
 const ReportsPage = () => <ReportsAndAnalytics />;
 

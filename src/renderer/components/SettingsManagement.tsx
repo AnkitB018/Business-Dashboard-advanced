@@ -301,10 +301,6 @@ const SettingsManagement: React.FC = () => {
   // Get all data from MongoDB
   const employees = await databaseService.getAllEmployees();
   const attendance = await databaseService.getAllAttendance().catch(() => []);
-  const sales = await databaseService.getAllSales().catch(() => []);
-  const customers = await databaseService.getAllCustomers().catch(() => []);
-  const purchases = await databaseService.getAllPurchases().catch(() => []);
-  const suppliers = await databaseService.getAllSuppliers().catch(() => []);
       
       // Create Excel workbook
       const workbook = XLSX.utils.book_new();
@@ -324,41 +320,9 @@ const SettingsManagement: React.FC = () => {
       } else {
         XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['No records']]), 'Attendance');
       }
-
-      // Sales sheet
-      if (sales && sales.length > 0) {
-        const salesSheet = XLSX.utils.json_to_sheet(sales);
-        XLSX.utils.book_append_sheet(workbook, salesSheet, 'Sales');
-      } else {
-        XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['No records']]), 'Sales');
-      }
-
-      // Customers sheet
-      if (customers && customers.length > 0) {
-        const customersSheet = XLSX.utils.json_to_sheet(customers);
-        XLSX.utils.book_append_sheet(workbook, customersSheet, 'Customers');
-      } else {
-        XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['No records']]), 'Customers');
-      }
-
-      // Purchases sheet
-      if (purchases && purchases.length > 0) {
-        const purchasesSheet = XLSX.utils.json_to_sheet(purchases);
-        XLSX.utils.book_append_sheet(workbook, purchasesSheet, 'Purchases');
-      } else {
-        XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['No records']]), 'Purchases');
-      }
-
-      // Suppliers sheet
-      if (suppliers && suppliers.length > 0) {
-        const suppliersSheet = XLSX.utils.json_to_sheet(suppliers);
-        XLSX.utils.book_append_sheet(workbook, suppliersSheet, 'Suppliers');
-      } else {
-        XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['No records']]), 'Suppliers');
-      }
       
       // Add a backup info sheet
-      const totalRecords = (employees?.length || 0) + (attendance?.length || 0) + (sales?.length || 0) + (customers?.length || 0) + (purchases?.length || 0) + (suppliers?.length || 0);
+      const totalRecords = (employees?.length || 0) + (attendance?.length || 0);
       const backupInfo = [{
         'Backup Date': new Date().toISOString(),
         'Version': '1.0.0',
@@ -553,10 +517,6 @@ const SettingsManagement: React.FC = () => {
       // Get all data from MongoDB (same as manual backup)
       const employees = await databaseService.getAllEmployees();
       const attendance = await databaseService.getAllAttendance().catch(() => []);
-      const sales = await databaseService.getAllSales().catch(() => []);
-      const customers = await databaseService.getAllCustomers().catch(() => []);
-      const purchases = await databaseService.getAllPurchases().catch(() => []);
-      const suppliers = await databaseService.getAllSuppliers().catch(() => []);
       
       // Create Excel workbook
       const workbook = XLSX.utils.book_new();
@@ -576,36 +536,8 @@ const SettingsManagement: React.FC = () => {
         XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['No records']]), 'Attendance');
       }
 
-      if (sales && sales.length > 0) {
-        const salesSheet = XLSX.utils.json_to_sheet(sales);
-        XLSX.utils.book_append_sheet(workbook, salesSheet, 'Sales');
-      } else {
-        XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['No records']]), 'Sales');
-      }
-
-      if (customers && customers.length > 0) {
-        const customersSheet = XLSX.utils.json_to_sheet(customers);
-        XLSX.utils.book_append_sheet(workbook, customersSheet, 'Customers');
-      } else {
-        XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['No records']]), 'Customers');
-      }
-
-      if (purchases && purchases.length > 0) {
-        const purchasesSheet = XLSX.utils.json_to_sheet(purchases);
-        XLSX.utils.book_append_sheet(workbook, purchasesSheet, 'Purchases');
-      } else {
-        XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['No records']]), 'Purchases');
-      }
-
-      if (suppliers && suppliers.length > 0) {
-        const suppliersSheet = XLSX.utils.json_to_sheet(suppliers);
-        XLSX.utils.book_append_sheet(workbook, suppliersSheet, 'Suppliers');
-      } else {
-        XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['No records']]), 'Suppliers');
-      }
-
       // Add backup info sheet
-      const totalRecords = (employees?.length || 0) + (attendance?.length || 0) + (sales?.length || 0) + (customers?.length || 0) + (purchases?.length || 0) + (suppliers?.length || 0);
+      const totalRecords = (employees?.length || 0) + (attendance?.length || 0);
       const backupInfo = [{
         'Backup Date': new Date().toISOString(),
         'Version': '1.0.0',

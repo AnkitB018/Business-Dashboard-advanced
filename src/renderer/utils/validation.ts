@@ -299,25 +299,6 @@ export const validateEmployee = (data: any): ValidationErrors => {
 };
 
 /**
- * Purchase-specific validators
- */
-export const validatePurchase = (data: any, totalPrice: number): ValidationErrors => {
-  const validator = new FormValidator();
-  
-  validator
-    .required(data.item_name, 'item_name', 'Item name is required')
-    .required(data.supplier_name, 'supplier_name', 'Supplier name is required')
-    .min(data.quantity, 1, 'quantity', 'Quantity must be greater than 0')
-    .min(data.unit_price, 0.01, 'unit_price', 'Unit price must be greater than 0');
-  
-  if (data.paid_amount && data.paid_amount > totalPrice) {
-    validator.custom(true, 'paid_amount', 'Paid amount cannot exceed total price');
-  }
-  
-  return validator.getErrors();
-};
-
-/**
  * Attendance-specific validators
  */
 export const validateAttendance = (data: any): ValidationErrors => {
@@ -334,21 +315,6 @@ export const validateAttendance = (data: any): ValidationErrors => {
     if (checkOut <= checkIn) {
       validator.custom(true, 'check_out_time', 'Check-out time must be after check-in time');
     }
-  }
-  
-  return validator.getErrors();
-};
-
-/**
- * Sales-specific validators
- */
-export const validateSale = (data: any, cart: any[]): ValidationErrors => {
-  const validator = new FormValidator();
-  
-  validator.required(data.customerId, 'customerId', 'Customer is required');
-  
-  if (cart.length === 0) {
-    validator.custom(true, 'cart', 'At least one item is required');
   }
   
   return validator.getErrors();

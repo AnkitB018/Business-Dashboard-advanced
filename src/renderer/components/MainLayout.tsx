@@ -73,18 +73,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({
       path: '/attendance'
     },
     {
-      id: 'sales',
-      title: 'Sales Management',
-      icon: 'ShoppingCart',
-      path: '/sales'
-    },
-    {
-      id: 'purchases',
-      title: 'Purchase Management',
-      icon: 'Inventory',
-      path: '/purchases'
-    },
-    {
       id: 'reports',
       title: 'Reports & Analytics',
       icon: 'Assessment',

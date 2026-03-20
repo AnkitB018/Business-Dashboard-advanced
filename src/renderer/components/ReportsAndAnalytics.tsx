@@ -81,14 +81,6 @@ interface ReportFilters {
   department: string;
 }
 
-interface SalesMetrics {
-  totalRevenue: number;
-  totalOrders: number;
-  averageOrderValue: number;
-  topProducts: Array<{ name: string; sales: number; revenue: number }>;
-  monthlySales: Array<{ month: string; revenue: number; orders: number }>;
-}
-
 interface AttendanceMetrics {
   totalEmployees: number;
   presentToday: number;
@@ -96,14 +88,6 @@ interface AttendanceMetrics {
   lateArrivals: number;
   averageWorkingHours: number;
   departmentAttendance: Array<{ department: string; present: number; total: number }>;
-}
-
-interface PurchaseMetrics {
-  totalSpent: number;
-  totalOrders: number;
-  topSuppliers: Array<{ name: string; amount: number; orders: number }>;
-  categoryBreakdown: Array<{ category: string; amount: number; percentage: number }>;
-  outstandingPayments: number;
 }
 
 interface FinancialMetrics {
@@ -145,14 +129,6 @@ const ReportsAndAnalytics: React.FC = () => {
     department: 'all'
   });
 
-  const [salesMetrics, setSalesMetrics] = useState<SalesMetrics>({
-    totalRevenue: 0,
-    totalOrders: 0,
-    averageOrderValue: 0,
-    topProducts: [],
-    monthlySales: []
-  });
-
   const [attendanceMetrics, setAttendanceMetrics] = useState<AttendanceMetrics>({
     totalEmployees: 0,
     presentToday: 0,
@@ -160,14 +136,6 @@ const ReportsAndAnalytics: React.FC = () => {
     lateArrivals: 0,
     averageWorkingHours: 0,
     departmentAttendance: []
-  });
-
-  const [purchaseMetrics, setPurchaseMetrics] = useState<PurchaseMetrics>({
-    totalSpent: 0,
-    totalOrders: 0,
-    topSuppliers: [],
-    categoryBreakdown: [],
-    outstandingPayments: 0
   });
 
   const [financialMetrics, setFinancialMetrics] = useState<FinancialMetrics>({
@@ -220,31 +188,10 @@ const ReportsAndAnalytics: React.FC = () => {
     setLoading(true);
     try {
       // Load real data from database
-      const [salesData, attendanceData, purchaseData, employeeData] = await Promise.all([
-        databaseService.getAllSales(),
+      const [attendanceData, employeeData] = await Promise.all([
         databaseService.getAllAttendance(),
-        databaseService.getAllPurchases(),
         databaseService.getAllEmployees()
       ]);
-
-      // Calculate sales metrics from real data
-      const totalRevenue = salesData.reduce((sum, sale) => sum + (sale.totalAmount || 0), 0);
-      const totalOrders = salesData.length;
-      const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-
-      // Calculate monthly sales (last 12 months)
-      const monthlySales = calculateMonthlySales(salesData);
-      
-      // Calculate top products (if sales have items)
-      const topProducts = calculateTopProducts(salesData);
-
-      setSalesMetrics({
-        totalRevenue,
-        totalOrders,
-        averageOrderValue,
-        topProducts,
-        monthlySales
-      });
 
       // Calculate attendance metrics from real data
       const today = new Date().toDateString();
@@ -266,38 +213,13 @@ const ReportsAndAnalytics: React.FC = () => {
         departmentAttendance
       });
 
-      // Calculate purchase metrics from real data
-      const totalSpent = purchaseData.reduce((sum, purchase) => sum + (purchase.total_price || 0), 0);
-      const totalPurchaseOrders = purchaseData.length;
-
-      // Calculate top suppliers
-      const topSuppliers = calculateTopSuppliers(purchaseData);
-      
-      // Calculate category breakdown
-      const categoryBreakdown = calculateCategoryBreakdown(purchaseData);
-
-      setPurchaseMetrics({
-        totalSpent,
-        totalOrders: totalPurchaseOrders,
-        topSuppliers,
-        categoryBreakdown,
-        outstandingPayments: purchaseData.reduce((sum, purchase) => sum + (purchase.due_amount || 0), 0)
-      });
-
-      // Calculate financial metrics
-      const totalExpenses = totalSpent;
-      const netProfit = totalRevenue - totalExpenses;
-      const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
-
-      // Calculate monthly cash flow
-      const cashFlow = calculateMonthlyCashFlow(salesData, purchaseData);
-
+      // Set simple financial metrics
       setFinancialMetrics({
-        totalRevenue,
-        totalExpenses,
-        netProfit,
-        profitMargin,
-        cashFlow
+        totalRevenue: 0,
+        totalExpenses: 0,
+        netProfit: 0,
+        profitMargin: 0,
+        cashFlow: []
       });
 
       // Load Employee Lifecycle Metrics
@@ -337,69 +259,12 @@ const ReportsAndAnalytics: React.FC = () => {
 
   // Load calendar data when calendar date or selected employee changes
   useEffect(() => {
-    if (tabValue === 3) { // Calendar tab
+    if (tabValue === 2) { // Calendar tab
       loadCalendarData();
     }
   }, [calendarDate, selectedEmployee, tabValue]);
 
-  // Helper calculation functions for sales, purchases, and attendance
-  const calculateMonthlySales = (salesData: any[]) => {
-    const months = [];
-    const now = new Date();
-    
-    for (let i = 11; i >= 0; i--) {
-      const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const nextMonth = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
-      const monthStr = monthDate.toLocaleDateString('en-US', { month: 'short' });
-      
-      const monthSales = salesData.filter((sale: any) => {
-        if (!sale.saleDate && !sale.date) return false;
-        const saleDate = new Date(sale.saleDate || sale.date);
-        return saleDate >= monthDate && saleDate < nextMonth;
-      });
-      
-      const revenue = monthSales.reduce((sum: number, sale: any) => sum + (sale.totalAmount || 0), 0);
-      
-      months.push({
-        month: monthStr,
-        revenue: Math.round(revenue),
-        orders: monthSales.length
-      });
-    }
-    
-    return months;
-  };
-
-  const calculateTopProducts = (salesData: any[]) => {
-    // Sales might have items array, aggregate by product name
-    const productMap: { [key: string]: { sales: number; revenue: number } } = {};
-    
-    salesData.forEach((sale: any) => {
-      if (sale.items && Array.isArray(sale.items)) {
-        sale.items.forEach((item: any) => {
-          const name = item.itemName || item.product || 'Unknown';
-          if (!productMap[name]) {
-            productMap[name] = { sales: 0, revenue: 0 };
-          }
-          productMap[name].sales += item.quantity || 1;
-          productMap[name].revenue += (item.quantity || 1) * (item.price || 0);
-        });
-      } else {
-        // If no items, use customer name or a generic entry
-        const name = sale.customerName || 'Sale';
-        if (!productMap[name]) {
-          productMap[name] = { sales: 0, revenue: 0 };
-        }
-        productMap[name].sales += 1;
-        productMap[name].revenue += sale.totalAmount || 0;
-      }
-    });
-    
-    return Object.entries(productMap)
-      .map(([name, data]) => ({ name, ...data }))
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 5);
-  };
+  // Helper calculation functions for attendance
 
   const calculateDepartmentAttendance = (employees: any[], todaysAttendance: any[]) => {
     const departments = new Set(employees.map(e => e.department).filter(Boolean));
@@ -420,78 +285,6 @@ const ReportsAndAnalytics: React.FC = () => {
     });
     
     return result.sort((a, b) => b.total - a.total);
-  };
-
-  const calculateTopSuppliers = (purchaseData: any[]) => {
-    const supplierMap: { [key: string]: { amount: number; orders: number } } = {};
-    
-    purchaseData.forEach((purchase: any) => {
-      const name = purchase.supplier_name || purchase.supplierName || 'Unknown Supplier';
-      if (!supplierMap[name]) {
-        supplierMap[name] = { amount: 0, orders: 0 };
-      }
-      supplierMap[name].amount += purchase.total_price || 0;
-      supplierMap[name].orders += 1;
-    });
-    
-    return Object.entries(supplierMap)
-      .map(([name, data]) => ({ name, ...data }))
-      .sort((a, b) => b.amount - a.amount)
-      .slice(0, 5);
-  };
-
-  const calculateCategoryBreakdown = (purchaseData: any[]) => {
-    const categoryMap: { [key: string]: number } = {};
-    const totalSpent = purchaseData.reduce((sum, p) => sum + (p.total_price || 0), 0);
-    
-    purchaseData.forEach((purchase: any) => {
-      const category = purchase.category || purchase.item_category || 'Uncategorized';
-      categoryMap[category] = (categoryMap[category] || 0) + (purchase.total_price || 0);
-    });
-    
-    return Object.entries(categoryMap)
-      .map(([category, amount]) => ({
-        category,
-        amount: Math.round(amount),
-        percentage: totalSpent > 0 ? Math.round((amount / totalSpent) * 1000) / 10 : 0
-      }))
-      .sort((a, b) => b.amount - a.amount)
-      .slice(0, 6);
-  };
-
-  const calculateMonthlyCashFlow = (salesData: any[], purchaseData: any[]) => {
-    const months = [];
-    const now = new Date();
-    
-    for (let i = 11; i >= 0; i--) {
-      const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const nextMonth = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
-      const monthStr = monthDate.toLocaleDateString('en-US', { month: 'short' });
-      
-      const monthSales = salesData.filter((sale: any) => {
-        if (!sale.saleDate && !sale.date) return false;
-        const saleDate = new Date(sale.saleDate || sale.date);
-        return saleDate >= monthDate && saleDate < nextMonth;
-      });
-      
-      const monthPurchases = purchaseData.filter((purchase: any) => {
-        if (!purchase.purchase_date && !purchase.date) return false;
-        const purchaseDate = new Date(purchase.purchase_date || purchase.date);
-        return purchaseDate >= monthDate && purchaseDate < nextMonth;
-      });
-      
-      const income = monthSales.reduce((sum: number, sale: any) => sum + (sale.totalAmount || 0), 0);
-      const expenses = monthPurchases.reduce((sum: number, purchase: any) => sum + (purchase.total_price || 0), 0);
-      
-      months.push({
-        month: monthStr,
-        income: Math.round(income),
-        expenses: Math.round(expenses),
-        profit: Math.round(income - expenses)
-      });
-    }
-    
-    return months;
   };
 
   const loadEmployeeLifecycleMetrics = async () => {
@@ -1092,10 +885,8 @@ const ReportsAndAnalytics: React.FC = () => {
               label="Report Type"
             >
               <MenuItem value="all">All Reports</MenuItem>
-              <MenuItem value="sales">Sales Only</MenuItem>
               <MenuItem value="attendance">Attendance Only</MenuItem>
               <MenuItem value="financial">Financial Only</MenuItem>
-              <MenuItem value="purchases">Purchases Only</MenuItem>
             </Select>
           </FormControl>
 
@@ -1139,10 +930,8 @@ const ReportsAndAnalytics: React.FC = () => {
       <Paper sx={{ mb: 3 }}>
         <Tabs value={tabValue} onChange={handleTabChange} variant="scrollable" scrollButtons="auto">
           <Tab label="Dashboard Overview" icon={<Assessment />} iconPosition="start" />
-          <Tab label="Sales Analytics" icon={<BarChart />} iconPosition="start" />
           <Tab label="Attendance Reports" icon={<People />} iconPosition="start" />
           <Tab label="Attendance Calendar" icon={<CalendarMonth />} iconPosition="start" />
-          <Tab label="Purchase Analytics" icon={<ShoppingCart />} iconPosition="start" />
           <Tab label="Financial Summary" icon={<AttachMoney />} iconPosition="start" />
           <Tab label="Employee Lifecycle" icon={<WorkHistory />} iconPosition="start" />
           <Tab label="Data Visualizations" icon={<Timeline />} iconPosition="start" />
@@ -1191,62 +980,10 @@ const ReportsAndAnalytics: React.FC = () => {
                 />
               </CardContent>
             </Card>
-
-            <Card>
-              <CardContent sx={{ textAlign: 'center' }}>
-                <Avatar sx={{ mx: 'auto', mb: 1, bgcolor: 'primary.main' }}>
-                  <ShoppingCart />
-                </Avatar>
-                <Typography variant="h5" fontWeight="bold">{salesMetrics.totalOrders}</Typography>
-                <Typography variant="body2" color="text.secondary">Total Orders</Typography>
-                <Chip 
-                  label={`${formatCurrency(salesMetrics.averageOrderValue)} avg`} 
-                  color="primary" 
-                  size="small" 
-                  sx={{ mt: 1 }}
-                />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent sx={{ textAlign: 'center' }}>
-                <Avatar sx={{ mx: 'auto', mb: 1, bgcolor: 'warning.main' }}>
-                  <TrendingDown />
-                </Avatar>
-                <Typography variant="h5" fontWeight="bold">{formatCurrency(purchaseMetrics.totalSpent)}</Typography>
-                <Typography variant="body2" color="text.secondary">Total Expenses</Typography>
-                <Chip 
-                  label={`${formatCurrency(purchaseMetrics.outstandingPayments)} pending`} 
-                  color="warning" 
-                  size="small" 
-                  sx={{ mt: 1 }}
-                />
-              </CardContent>
-            </Card>
           </Box>
 
           {/* Quick Insights */}
           <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 3 }}>
-            {/* Sales Trend */}
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>Monthly Sales Trend</Typography>
-              <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={salesMetrics.monthlySales}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <RechartsTooltip formatter={(value) => [formatCurrency(Number(value)), 'Revenue']} />
-                  <Line 
-                    type="monotone" 
-                    dataKey="revenue" 
-                    stroke="#dc2626" 
-                    strokeWidth={2}
-                    dot={{ fill: '#dc2626', strokeWidth: 2, r: 4 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </Paper>
-
             {/* Department Attendance */}
             <Paper sx={{ p: 3 }}>
               <Typography variant="h6" gutterBottom>Department Attendance</Typography>
@@ -1289,64 +1026,8 @@ const ReportsAndAnalytics: React.FC = () => {
         </Box>
       )}
 
-      {/* Sales Analytics Tab */}
-      {tabValue === 1 && (
-        <Box>
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 3 }}>
-            {/* Sales Summary */}
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>Sales Summary</Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography>Total Revenue:</Typography>
-                  <Typography fontWeight="bold">{formatCurrency(salesMetrics.totalRevenue)}</Typography>
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography>Total Orders:</Typography>
-                  <Typography fontWeight="bold">{salesMetrics.totalOrders}</Typography>
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography>Average Order Value:</Typography>
-                  <Typography fontWeight="bold">{formatCurrency(salesMetrics.averageOrderValue)}</Typography>
-                </Box>
-                <Divider />
-                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography color="success.main">Growth Rate:</Typography>
-                  <Typography fontWeight="bold" color="success.main">+15.2%</Typography>
-                </Box>
-              </Box>
-            </Paper>
-
-            {/* Top Products */}
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>Top Performing Products</Typography>
-              <TableContainer>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Product</TableCell>
-                      <TableCell align="right">Sales</TableCell>
-                      <TableCell align="right">Revenue</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {salesMetrics.topProducts.map((product) => (
-                      <TableRow key={product.name}>
-                        <TableCell>{product.name}</TableCell>
-                        <TableCell align="right">{product.sales}</TableCell>
-                        <TableCell align="right">{formatCurrency(product.revenue)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Paper>
-          </Box>
-        </Box>
-      )}
-
       {/* Attendance Reports Tab */}
-      {tabValue === 2 && (
+      {tabValue === 1 && (
         <Box>
           <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 3 }}>
             {/* Attendance Overview */}
@@ -1418,7 +1099,7 @@ const ReportsAndAnalytics: React.FC = () => {
       )}
 
       {/* Attendance Calendar Tab */}
-      {tabValue === 3 && (
+      {tabValue === 2 && (
         <Box>
           <Paper sx={{ p: 3, mb: 3 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -1541,96 +1222,8 @@ const ReportsAndAnalytics: React.FC = () => {
         </Box>
       )}
 
-      {/* Purchase Analytics Tab */}
-      {tabValue === 4 && (
-        <Box>
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 3 }}>
-            {/* Purchase Summary */}
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>Purchase Summary</Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography>Total Spent:</Typography>
-                  <Typography fontWeight="bold">{formatCurrency(purchaseMetrics.totalSpent)}</Typography>
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography>Total Orders:</Typography>
-                  <Typography fontWeight="bold">{purchaseMetrics.totalOrders}</Typography>
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography>Average Order:</Typography>
-                  <Typography fontWeight="bold">{formatCurrency(purchaseMetrics.totalSpent / purchaseMetrics.totalOrders)}</Typography>
-                </Box>
-                <Divider />
-                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography color="warning.main">Outstanding Payments:</Typography>
-                  <Typography fontWeight="bold" color="warning.main">{formatCurrency(purchaseMetrics.outstandingPayments)}</Typography>
-                </Box>
-              </Box>
-            </Paper>
-
-            {/* Top Suppliers */}
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>Top Suppliers</Typography>
-              <TableContainer>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Supplier</TableCell>
-                      <TableCell align="right">Amount</TableCell>
-                      <TableCell align="right">Orders</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {purchaseMetrics.topSuppliers.map((supplier) => (
-                      <TableRow key={supplier.name}>
-                        <TableCell>{supplier.name}</TableCell>
-                        <TableCell align="right">{formatCurrency(supplier.amount)}</TableCell>
-                        <TableCell align="right">{supplier.orders}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Paper>
-
-            {/* Category Breakdown */}
-            <Paper sx={{ p: 3, gridColumn: 'span 2' }}>
-              <Typography variant="h6" gutterBottom>Purchase Category Breakdown</Typography>
-              <Box sx={{ mt: 2 }}>
-                {purchaseMetrics.categoryBreakdown.map((category) => (
-                  <Box key={category.category} sx={{ mb: 2 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                      <Typography variant="body2">{category.category}</Typography>
-                      <Typography variant="body2">{formatCurrency(category.amount)} ({category.percentage}%)</Typography>
-                    </Box>
-                    <Box
-                      sx={{
-                        height: 8,
-                        backgroundColor: 'grey.200',
-                        borderRadius: 1,
-                        overflow: 'hidden'
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          height: '100%',
-                          width: `${category.percentage}%`,
-                          background: 'linear-gradient(90deg, #dc2626, #991b1b)',
-                          transition: 'width 0.3s ease'
-                        }}
-                      />
-                    </Box>
-                  </Box>
-                ))}
-              </Box>
-            </Paper>
-          </Box>
-        </Box>
-      )}
-
       {/* Financial Summary Tab */}
-      {tabValue === 5 && (
+      {tabValue === 3 && (
         <Box>
           <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 3 }}>
             {/* Financial Overview */}
@@ -1724,7 +1317,7 @@ const ReportsAndAnalytics: React.FC = () => {
       )}
 
       {/* Employee Lifecycle Analytics Tab */}
-      {tabValue === 6 && (
+      {tabValue === 4 && (
         <Box>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
             <Typography variant="h5" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -2114,76 +1707,15 @@ const ReportsAndAnalytics: React.FC = () => {
       )}
 
       {/* Data Visualizations Tab */}
-      {tabValue === 7 && (
+      {tabValue === 5 && (
         <Box>
           <Typography variant="h5" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
             <Timeline color="primary" />
             Interactive Data Visualizations
           </Typography>
 
-          {/* Sales Trend Chart */}
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h6" gutterBottom>Sales Revenue Trend</Typography>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={salesMetrics.monthlySales}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <RechartsTooltip formatter={(value) => [formatCurrency(Number(value)), 'Revenue']} />
-                <Legend />
-                <Line 
-                  type="monotone" 
-                  dataKey="revenue" 
-                  stroke="#8884d8" 
-                  strokeWidth={3}
-                  dot={{ fill: '#8884d8', strokeWidth: 2, r: 6 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </Paper>
-
-          {/* Sales vs Orders Chart */}
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h6" gutterBottom>Sales Performance Analysis</Typography>
-            <ResponsiveContainer width="100%" height={300}>
-              <RechartsBarChart data={salesMetrics.monthlySales}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis yAxisId="left" />
-                <YAxis yAxisId="right" orientation="right" />
-                <RechartsTooltip />
-                <Legend />
-                <Bar yAxisId="left" dataKey="revenue" fill="#8884d8" name="Revenue" />
-                <Bar yAxisId="right" dataKey="orders" fill="#82ca9d" name="Orders" />
-              </RechartsBarChart>
-            </ResponsiveContainer>
-          </Paper>
-
-          {/* Top Products Pie Chart */}
+          {/* Department Attendance and Financial Analysis */}
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3, mb: 3 }}>
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>Top Products by Revenue</Typography>
-              <ResponsiveContainer width="100%" height={300}>
-                <RechartsPieChart>
-                  <RechartsTooltip formatter={(value) => [formatCurrency(Number(value)), 'Revenue']} />
-                  <Legend />
-                  <Pie
-                    data={salesMetrics.topProducts}
-                    dataKey="revenue"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    label={({ name, percent }: any) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                  >
-                    {salesMetrics.topProducts.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
-                    ))}
-                  </Pie>
-                </RechartsPieChart>
-              </ResponsiveContainer>
-            </Paper>
-
             <Paper sx={{ p: 3 }}>
               <Typography variant="h6" gutterBottom>Department Attendance</Typography>
               <ResponsiveContainer width="100%" height={300}>
@@ -2241,20 +1773,6 @@ const ReportsAndAnalytics: React.FC = () => {
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>Export Charts</Typography>
             <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-              <Button 
-                variant="outlined" 
-                startIcon={<GetApp />}
-                onClick={() => exportChart('sales-trend')}
-              >
-                Export Sales Trend
-              </Button>
-              <Button 
-                variant="outlined" 
-                startIcon={<GetApp />}
-                onClick={() => exportChart('product-analysis')}
-              >
-                Export Product Analysis
-              </Button>
               <Button 
                 variant="outlined" 
                 startIcon={<GetApp />}
