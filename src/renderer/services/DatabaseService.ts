@@ -523,7 +523,7 @@ class DatabaseService {
         throw new Error('Employee not found');
       }
 
-      const currentSalary = employee.current_salary || employee.salary || 0;
+      const currentSalary = employee.daily_wage || 0;
 
       // Calculate changes
       const changeAmount = newSalary - currentSalary;
@@ -542,7 +542,7 @@ class DatabaseService {
         reason,
         approved_by: approvedBy,
         notes,
-        created_date: new Date()
+        created_at: new Date()
       };
 
       // Add salary history record
@@ -550,10 +550,9 @@ class DatabaseService {
 
       // Update employee's current salary and last review date
       const updatedEmployee = await this.updateEmployee(employeeId, {
-        current_salary: newSalary,
-        salary: newSalary, // For backward compatibility
+        daily_wage: newSalary,
         last_salary_review_date: effectiveDate,
-        last_modified: new Date()
+        updated_at: new Date()
       });
 
       return {
@@ -635,7 +634,7 @@ class DatabaseService {
         throw new Error('Employee not found');
       }
 
-      const previousStatus = employee.employment_status || (employee.is_active ? 'active' : 'inactive');
+      const previousStatus = employee.employment_status || 'inactive';
       
       // Determine event type based on new status
       let eventType: 'hired' | 'resigned' | 'terminated' | 'retired' | 'status_change' = 'status_change';
@@ -659,7 +658,7 @@ class DatabaseService {
         exit_interview_notes: exitInterviewNotes,
         notes,
         processed_by: processedBy,
-        created_date: new Date()
+        created_at: new Date()
       };
 
       // Add employment history record
@@ -668,8 +667,7 @@ class DatabaseService {
       // Update employee's status
       const updateData: Partial<Employee> = {
         employment_status: newStatus,
-        is_active: newStatus === 'active', // For backward compatibility
-        last_modified: new Date()
+        updated_at: new Date()
       };
 
       // If employee is leaving, set termination details
@@ -701,7 +699,7 @@ class DatabaseService {
 
     return employees.filter(emp => {
       // Only active employees need reviews
-      if (emp.employment_status !== 'active' && !emp.is_active) return false;
+      if (emp.employment_status !== 'active') return false;
       
       // If never reviewed, or last review was > 12 months ago
       if (!emp.last_salary_review_date) return true;

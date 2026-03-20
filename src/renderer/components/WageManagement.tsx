@@ -290,7 +290,7 @@ const WageManagement: React.FC = () => {
 
         // Calculate effective hours and wage
         const effectiveHours = Math.max(0, totalHours - totalBreakHours);
-        const dailyWage = employeeData.daily_wage || employeeData.salary || 0;
+        const dailyWage = employeeData.daily_wage || 0;
         const calculatedWage = (effectiveHours * dailyWage) / 8;
 
         // Get payout records for this employee in this period
@@ -425,7 +425,7 @@ const WageManagement: React.FC = () => {
         );
 
         let totalEarned = 0;
-        const dailyWage = employeeData.daily_wage || employeeData.salary || 0;
+        const dailyWage = employeeData.daily_wage || 0;
         
         // Calculate total earnings for the period
         for (const record of attendanceRecords) {
@@ -530,7 +530,7 @@ const WageManagement: React.FC = () => {
         let totalHours = 0;
         let totalBreakHours = 0;
         let totalEarned = 0;
-        const dailyWage = employeeData.daily_wage || employeeData.salary || 0;
+        const dailyWage = employeeData.daily_wage || 0;
         
         // Calculate hours and earnings
         for (const record of attendanceRecords) {

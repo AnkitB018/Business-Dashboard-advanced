@@ -320,7 +320,7 @@ const ReportsAndAnalytics: React.FC = () => {
 
       // Calculate average salary
       const avgSalary = employees.length > 0
-        ? employees.reduce((sum, e) => sum + (e.current_salary || e.salary || 0), 0) / employees.length
+        ? employees.reduce((sum, e) => sum + (e.daily_wage || 0), 0) / employees.length
         : 0;
 
       // Calculate salary growth rate (from history)
@@ -394,7 +394,7 @@ const ReportsAndAnalytics: React.FC = () => {
       });
       
       const avgSalary = relevantEmployees.length > 0
-        ? relevantEmployees.reduce((sum, e) => sum + (e.current_salary || e.salary || 0), 0) / relevantEmployees.length
+        ? relevantEmployees.reduce((sum, e) => sum + (e.daily_wage || 0), 0) / relevantEmployees.length
         : 0;
       
       months.push({
@@ -468,7 +468,7 @@ const ReportsAndAnalytics: React.FC = () => {
     
     const distribution = ranges.map(range => {
       const count = employees.filter(e => {
-        const salary = e.current_salary || e.salary || 0;
+        const salary = e.daily_wage || 0;
         return salary >= range.min && salary < range.max;
       }).length;
       

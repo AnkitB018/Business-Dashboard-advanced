@@ -77,7 +77,7 @@ const EmploymentStatusDialog: React.FC<EmploymentStatusDialogProps> = ({
     }
   }, [employee, open]);
 
-  const currentStatus = employee?.employment_status || (employee?.is_active ? 'active' : 'inactive');
+  const currentStatus = employee?.employment_status || 'inactive';
 
   const validateForm = (): boolean => {
     const errors = validateEmploymentStatusChange(formData);

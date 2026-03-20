@@ -291,8 +291,8 @@ export const validateEmployee = (data: any): ValidationErrors => {
     .required(data.phone, 'phone', 'Phone is required')
     .phone(data.phone, 'phone');
   
-  if (data.salary !== undefined && data.salary <= 0) {
-    validator.custom(true, 'salary', 'Salary must be greater than 0');
+  if (data.daily_wage !== undefined && data.daily_wage <= 0) {
+    validator.custom(true, 'daily_wage', 'Daily wage must be greater than 0');
   }
   
   return validator.getErrors();

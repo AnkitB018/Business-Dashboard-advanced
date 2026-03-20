@@ -8,15 +8,13 @@ export interface Employee {
   position: string;
   phone: string;
   hire_date: Date;
-  current_salary: number;           // Current salary (latest)
-  salary?: number;                  // Deprecated, kept for backward compatibility
+  daily_wage: number;               // Daily wage for the employee
   employment_status: 'active' | 'resigned' | 'terminated' | 'retired' | 'on_leave';
-  is_active?: boolean;              // Deprecated, kept for backward compatibility
   termination_date?: Date;          // Date when employment ended
   termination_reason?: string;      // Reason for leaving
   last_salary_review_date?: Date;   // Last time salary was reviewed/changed
-  created_date: Date;
-  last_modified: Date;
+  created_at: Date;
+  updated_at: Date;
 }
 
 export class EmployeeModel implements Employee {
@@ -26,15 +24,13 @@ export class EmployeeModel implements Employee {
   position: string;
   phone: string;
   hire_date: Date;
-  current_salary: number;
-  salary: number;
+  daily_wage: number;
   employment_status: 'active' | 'resigned' | 'terminated' | 'retired' | 'on_leave';
-  is_active: boolean;
   termination_date?: Date;
   termination_reason?: string;
   last_salary_review_date?: Date;
-  created_date: Date;
-  last_modified: Date;
+  created_at: Date;
+  updated_at: Date;
 
   constructor(data: Partial<Employee> = {}) {
     this._id = data._id;
@@ -43,15 +39,13 @@ export class EmployeeModel implements Employee {
     this.position = data.position || '';
     this.phone = data.phone || '';
     this.hire_date = data.hire_date || new Date();
-    this.current_salary = data.current_salary || data.salary || 0;
-    this.salary = data.salary || data.current_salary || 0; // Backward compatibility
+    this.daily_wage = data.daily_wage || 0;
     this.employment_status = data.employment_status || 'active';
-    this.is_active = data.is_active !== undefined ? data.is_active : (data.employment_status === 'active');
     this.termination_date = data.termination_date;
     this.termination_reason = data.termination_reason;
     this.last_salary_review_date = data.last_salary_review_date;
-    this.created_date = data.created_date || new Date();
-    this.last_modified = data.last_modified || new Date();
+    this.created_at = data.created_at || new Date();
+    this.updated_at = data.updated_at || new Date();
   }
 
   // Convert to MongoDB document
@@ -59,8 +53,8 @@ export class EmployeeModel implements Employee {
     return {
       ...this,
       hire_date: this.hire_date.toISOString(),
-      created_date: this.created_date.toISOString(),
-      last_modified: this.last_modified.toISOString(),
+      created_at: this.created_at.toISOString(),
+      updated_at: this.updated_at.toISOString(),
     };
   }
 
@@ -69,8 +63,8 @@ export class EmployeeModel implements Employee {
     return new EmployeeModel({
       ...doc,
       hire_date: new Date(doc.hire_date),
-      created_date: new Date(doc.created_date),
-      last_modified: new Date(doc.last_modified),
+      created_at: new Date(doc.created_at),
+      updated_at: new Date(doc.updated_at),
     });
   }
 
@@ -82,7 +76,7 @@ export class EmployeeModel implements Employee {
       .required(this.employee_id, 'employee_id', 'Employee ID is required')
       .required(this.name, 'name', 'Name is required')
       .required(this.position, 'position', 'Position is required')
-      .min(this.salary, 0, 'salary', 'Salary cannot be negative');
+      .min(this.daily_wage, 0, 'daily_wage', 'Daily wage cannot be negative');
 
     const validationErrors = validator.getErrors();
     return {

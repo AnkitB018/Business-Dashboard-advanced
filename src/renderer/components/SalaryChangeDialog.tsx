@@ -69,7 +69,7 @@ const SalaryChangeDialog: React.FC<SalaryChangeDialogProps> = ({
     }
   }, [employee, open]);
 
-  const currentSalary = employee?.current_salary || employee?.salary || 0;
+  const currentSalary = employee?.daily_wage || 0;
   const changeAmount = formData.new_salary - currentSalary;
   const changePercentage = currentSalary > 0 ? ((changeAmount / currentSalary) * 100) : 0;
   const isIncrease = changeAmount > 0;

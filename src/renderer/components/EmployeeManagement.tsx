@@ -144,13 +144,10 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = () => {
       const employeeData: Employee = {
         ...formData,
         hire_date: formData.hire_date || new Date(),
-        current_salary: formData.current_salary || 0,
+        daily_wage: formData.daily_wage || 0,
         employment_status: formData.employment_status || 'active',
-        // Keep backward compatibility
-        salary: formData.current_salary || formData.salary || 0,
-        is_active: formData.employment_status === 'active',
-        created_date: new Date(),
-        last_modified: new Date()
+        created_at: new Date(),
+        updated_at: new Date()
       } as Employee;
 
       if (editingEmployee) {
@@ -208,7 +205,7 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = () => {
       name: '',
       position: '',
       phone: '',
-      current_salary: 0,
+      daily_wage: 0,
       employment_status: 'active'
     });
     setFormErrors({});
@@ -306,7 +303,7 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = () => {
               Average Salary
             </Typography>
             <Typography variant="h4" color="info.main">
-              ₹{employees.length > 0 ? Math.round(employees.reduce((sum, emp) => sum + (emp.current_salary || emp.salary || 0), 0) / employees.length).toLocaleString() : 0}
+              ₹{employees.length > 0 ? Math.round(employees.reduce((sum, emp) => sum + (emp.daily_wage || 0), 0) / employees.length).toLocaleString() : 0}
             </Typography>
           </CardContent>
         </Card>
@@ -407,7 +404,7 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = () => {
                   <TableCell>{employeeData.name || 'N/A'}</TableCell>
                   <TableCell>{employeeData.position || 'N/A'}</TableCell>
                   <TableCell>{employeeData.phone || 'N/A'}</TableCell>
-                  <TableCell>₹{(employeeData.current_salary || employeeData.salary || 0).toLocaleString()}</TableCell>
+                  <TableCell>₹{(employeeData.daily_wage || 0).toLocaleString()}</TableCell>
                   <TableCell>
                     <Chip
                       label={(employeeData.employment_status || 'active').toUpperCase()}
@@ -550,12 +547,12 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = () => {
             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 2 }}>
               {!editingEmployee && (
                 <TextField
-                  label="Initial Salary"
+                  label="Daily Wage"
                   type="number"
-                  value={formData.current_salary || ''}
-                  onChange={handleFormChange('current_salary')}
-                  error={!!formErrors.current_salary}
-                  helperText={editingEmployee ? 'Use Salary Change action to modify salary' : formErrors.current_salary}
+                  value={formData.daily_wage || ''}
+                  onChange={handleFormChange('daily_wage')}
+                  error={!!formErrors.daily_wage}
+                  helperText={editingEmployee ? 'Use Salary Change action to modify wage' : formErrors.daily_wage}
                   InputProps={{
                     startAdornment: <InputAdornment position="start">₹</InputAdornment>,
                   }}
