@@ -8,6 +8,7 @@ import { MongoClient, Db, ObjectId } from 'mongodb';
 // Keep a global reference of the window object
 let mainWindow: BrowserWindow;
 let database: Db | null = null;
+let mongoClient: MongoClient | null = null;
 
 // Database configuration storage
 interface DatabaseConfig {
@@ -146,27 +147,78 @@ app.on('activate', () => {
 // Database connection handler
 ipcMain.handle('connect-database', async (event, config: DatabaseConfig) => {
   try {
-    const client = new MongoClient(config.connectionString);
-    await client.connect();
-    database = client.db(config.databaseName);
+    // Close existing connection if any
+    if (mongoClient) {
+      try {
+        await mongoClient.close();
+      } catch (e) {
+        // Ignore close errors
+      }
+      mongoClient = null;
+      database = null;
+    }
     
-    // Test the connection
-    await database.admin().ping();
+    const client = new MongoClient(config.connectionString, {
+      serverSelectionTimeoutMS: 5000, // 5 second timeout for connection
+      connectTimeoutMS: 5000
+    });
+    
+    // Actually connect to the server
+    await client.connect();
+    const db = client.db(config.databaseName);
+    
+    // Test the connection with a real operation
+    await db.admin().ping();
+    
+    // Try to list collections to verify we have proper access
+    await db.listCollections().toArray();
+    
+    // Only set if all tests pass
+    mongoClient = client;
+    database = db;
     
     return { success: true, message: 'Connected to database successfully' };
   } catch (error) {
     console.error('Database connection error:', error);
+    // Clear database on failure
+    database = null;
+    mongoClient = null;
+    
+    // Extract meaningful error message
+    let errorMessage = 'Unknown connection error';
+    if (error instanceof Error) {
+      // MongoDB specific error messages
+      if (error.message.includes('authentication')) {
+        errorMessage = 'Authentication failed. Please check your username and password.';
+      } else if (error.message.includes('ENOTFOUND') || error.message.includes('ETIMEDOUT')) {
+        errorMessage = 'Could not reach database server. Please check your cluster URL.';
+      } else if (error.message.includes('not authorized')) {
+        errorMessage = 'Not authorized to access this database. Please check your credentials and database name.';
+      } else {
+        errorMessage = error.message;
+      }
+    }
+    
     return { 
       success: false, 
-      message: error instanceof Error ? error.message : 'Unknown connection error' 
+      message: errorMessage
     };
   }
 });
 
 // Database operations handlers
 ipcMain.handle('db-operation', async (event, operation: string, collection: string, data?: any) => {
-  if (!database) {
+  if (!database || !mongoClient) {
     return { success: false, message: 'Database not connected' };
+  }
+  
+  // Verify connection is still alive
+  try {
+    await database.admin().ping();
+  } catch (error) {
+    database = null;
+    mongoClient = null;
+    return { success: false, message: 'Database connection lost. Please reconnect.' };
   }
 
   // Helper function to convert _id to ObjectId if needed

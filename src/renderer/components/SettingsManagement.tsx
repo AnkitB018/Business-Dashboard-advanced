@@ -208,12 +208,34 @@ const SettingsManagement: React.FC = () => {
 
   const testDatabaseConnection = async (config?: DatabaseConfig) => {
     try {
+      setLoading(true);
       const testConfig = config || dbConfig;
+      
+      // Validate config before testing
+      if (!testConfig.username || !testConfig.password || !testConfig.clusterUrl || !testConfig.databaseName) {
+        setConnectionStatus({
+          isConnected: false,
+          message: 'Please fill in all required fields before testing connection'
+        });
+        setLoading(false);
+        return false;
+      }
+      
       const isConnected = await databaseService.testConnection(testConfig);
-      setConnectionStatus({
-        isConnected,
-        message: isConnected ? 'Database connection successful' : 'Failed to connect to database'
-      });
+      
+      if (isConnected) {
+        setConnectionStatus({
+          isConnected: true,
+          message: 'Database connection successful'
+        });
+      } else {
+        setConnectionStatus({
+          isConnected: false,
+          message: 'Failed to connect to database. Please check your credentials.'
+        });
+      }
+      
+      setLoading(false);
       return isConnected;
     } catch (error: any) {
       console.error('Connection test failed:', error);
@@ -222,6 +244,7 @@ const SettingsManagement: React.FC = () => {
         isConnected: false,
         message: 'Connection test failed: ' + errorMessage
       });
+      setLoading(false);
       return false;
     }
   };
@@ -796,7 +819,7 @@ const SettingsManagement: React.FC = () => {
             fullWidth
             label="Username"
             value={dbConfig.username}
-            onChange={(e) => setDbConfig(prev => ({ ...prev, username: e.target.value }))}
+            onChange={(e) => setDbConfig(prev => ({ ...prev, username: e.target.value, connectionString: undefined }))}
             placeholder="Enter MongoDB username"
             variant="outlined"
             disabled={!isDbEditMode}
@@ -811,7 +834,7 @@ const SettingsManagement: React.FC = () => {
             fullWidth
             label="Password"
             value={dbConfig.password}
-            onChange={(e) => setDbConfig(prev => ({ ...prev, password: e.target.value }))}
+            onChange={(e) => setDbConfig(prev => ({ ...prev, password: e.target.value, connectionString: undefined }))}
             placeholder="Enter MongoDB password"
             variant="outlined"
             type={showPassword ? "text" : "password"}
@@ -836,7 +859,7 @@ const SettingsManagement: React.FC = () => {
             fullWidth
             label="Cluster URL"
             value={dbConfig.clusterUrl}
-            onChange={(e) => setDbConfig(prev => ({ ...prev, clusterUrl: e.target.value }))}
+            onChange={(e) => setDbConfig(prev => ({ ...prev, clusterUrl: e.target.value, connectionString: undefined }))}
             placeholder="cluster0.example.mongodb.net"
             variant="outlined"
             disabled={!isDbEditMode}
@@ -851,7 +874,7 @@ const SettingsManagement: React.FC = () => {
             fullWidth
             label="Database Name"
             value={dbConfig.databaseName}
-            onChange={(e) => setDbConfig(prev => ({ ...prev, databaseName: e.target.value }))}
+            onChange={(e) => setDbConfig(prev => ({ ...prev, databaseName: e.target.value, connectionString: undefined }))}
             placeholder="business_dashboard"
             variant="outlined"
             disabled={!isDbEditMode}

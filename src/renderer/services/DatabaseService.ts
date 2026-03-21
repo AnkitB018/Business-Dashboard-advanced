@@ -51,59 +51,43 @@ class DatabaseService {
 
   // Employee operations
   async getAllEmployees(): Promise<Employee[]> {
-    // Try to ensure connection before operation
-    if (!this.isConnected) {
-      const config = await this.getConfig();
-      if (config) {
-        const connected = await this.testConnection(config);
-        if (!connected) {
-          throw new Error('Database not connected and failed to reconnect');
-        }
-      } else {
-        throw new Error('Database not configured');
-      }
-    }
-    
     const result = await window.electronAPI.dbOperation('find', 'employees');
-    if (result.success) {
-      return result.data || [];
+    if (!result.success) {
+      this.isConnected = false;
+      throw new Error(result.message || 'Failed to fetch employees');
     }
-    throw new Error(result.message || 'Failed to fetch employees');
+    return result.data || [];
   }
 
   async getEmployeeById(id: string): Promise<Employee | null> {
-    if (!this.isConnected) throw new Error('Database not connected');
-    
     const result = await window.electronAPI.dbOperation('findOne', 'employees', { query: { _id: id } });
-    if (result.success) {
-      return result.data;
+    if (!result.success) {
+      this.isConnected = false;
+      throw new Error(result.message || 'Failed to fetch employee');
     }
-    throw new Error(result.message || 'Failed to fetch employee');
+    return result.data;
   }
 
   async addEmployee(employee: Omit<Employee, '_id'>): Promise<Employee> {
-    if (!this.isConnected) throw new Error('Database not connected');
-    
     const newEmployee = {
       ...employee,
       _id: new Date().getTime().toString(), // Simple ID generation
-      createdAt: new Date(),
-      updatedAt: new Date()
+      created_at: new Date(),
+      updated_at: new Date()
     };
 
     const result = await window.electronAPI.dbOperation('insertOne', 'employees', newEmployee);
-    if (result.success) {
-      return newEmployee as Employee;
+    if (!result.success) {
+      this.isConnected = false;
+      throw new Error(result.message || 'Failed to add employee');
     }
-    throw new Error(result.message || 'Failed to add employee');
+    return newEmployee as Employee;
   }
 
   async updateEmployee(id: string, employee: Partial<Employee>): Promise<Employee> {
-    if (!this.isConnected) throw new Error('Database not connected');
-    
     const updateData = {
       ...employee,
-      updatedAt: new Date()
+      updated_at: new Date()
     };
 
     const result = await window.electronAPI.dbOperation('updateOne', 'employees', {
@@ -111,15 +95,14 @@ class DatabaseService {
       update: updateData
     });
 
-    if (result.success) {
-      return { ...employee, _id: id } as Employee;
+    if (!result.success) {
+      this.isConnected = false;
+      throw new Error(result.message || 'Failed to update employee');
     }
-    throw new Error(result.message || 'Failed to update employee');
+    return { ...employee, _id: id } as Employee;
   }
 
   async deleteEmployee(id: string): Promise<void> {
-    if (!this.isConnected) throw new Error('Database not connected');
-    
     const result = await window.electronAPI.dbOperation('deleteOne', 'employees', { _id: id });
     if (!result.success) {
       throw new Error(result.message || 'Failed to delete employee');
@@ -128,8 +111,6 @@ class DatabaseService {
 
   // Attendance operations
   async getAllAttendance(): Promise<Attendance[]> {
-    if (!this.isConnected) throw new Error('Database not connected');
-    
     const result = await window.electronAPI.dbOperation('find', 'attendance');
     if (result.success) {
       return result.data || [];
@@ -138,8 +119,6 @@ class DatabaseService {
   }
 
   async getAttendanceByEmployeeId(employeeId: string): Promise<Attendance[]> {
-    if (!this.isConnected) throw new Error('Database not connected');
-    
     const result = await window.electronAPI.dbOperation('find', 'attendance', { 
       query: { employee_id: employeeId } 
     });
@@ -150,8 +129,6 @@ class DatabaseService {
   }
 
   async getAttendanceByEmployeeAndDateRange(employeeId: string, startDate: string, endDate: string): Promise<Attendance[]> {
-    if (!this.isConnected) throw new Error('Database not connected');
-    
     const result = await window.electronAPI.dbOperation('find', 'attendance', { 
       query: { 
         employee_id: employeeId,
@@ -168,8 +145,6 @@ class DatabaseService {
   }
 
   async addAttendanceRecord(record: Omit<Attendance, '_id'>): Promise<Attendance> {
-    if (!this.isConnected) throw new Error('Database not connected');
-    
     const newRecord = {
       ...record,
       _id: new Date().getTime().toString(), // Simple ID generation
@@ -185,8 +160,6 @@ class DatabaseService {
   }
 
   async updateAttendanceRecord(id: string, record: Partial<Attendance>): Promise<Attendance> {
-    if (!this.isConnected) throw new Error('Database not connected');
-    
     const updateData = {
       ...record,
       updated_at: new Date()
@@ -204,8 +177,6 @@ class DatabaseService {
   }
 
   async deleteAttendanceRecord(id: string): Promise<void> {
-    if (!this.isConnected) throw new Error('Database not connected');
-    
     const result = await window.electronAPI.dbOperation('deleteOne', 'attendance', { _id: id });
     if (!result.success) {
       throw new Error(result.message || 'Failed to delete attendance record');
@@ -214,8 +185,6 @@ class DatabaseService {
 
   // Payout operations
   async getAllPayouts(): Promise<PayoutRecord[]> {
-    if (!this.isConnected) throw new Error('Database not connected');
-    
     const result = await window.electronAPI.dbOperation('find', 'payouts');
     if (result.success) {
       return result.data || [];
@@ -224,8 +193,6 @@ class DatabaseService {
   }
 
   async getPayoutsByEmployee(employeeId: string): Promise<PayoutRecord[]> {
-    if (!this.isConnected) throw new Error('Database not connected');
-    
     const result = await window.electronAPI.dbOperation('find', 'payouts', { 
       query: { employeeId: employeeId } 
     });
@@ -236,8 +203,6 @@ class DatabaseService {
   }
 
   async getPayoutsByDateRange(startDate: string, endDate: string): Promise<PayoutRecord[]> {
-    if (!this.isConnected) throw new Error('Database not connected');
-    
     const result = await window.electronAPI.dbOperation('find', 'payouts', { 
       query: { 
         payout_date: {
@@ -253,8 +218,6 @@ class DatabaseService {
   }
 
   async addPayoutRecord(record: Omit<PayoutRecord, '_id'>): Promise<PayoutRecord> {
-    if (!this.isConnected) throw new Error('Database not connected');
-    
     const newRecord = {
       ...record,
       _id: new Date().getTime().toString() + Math.random().toString(36).substr(2, 9),
@@ -270,8 +233,6 @@ class DatabaseService {
   }
 
   async updatePayoutRecord(id: string, record: Partial<PayoutRecord>): Promise<PayoutRecord> {
-    if (!this.isConnected) throw new Error('Database not connected');
-    
     const updateData = {
       ...record,
       updatedAt: new Date()
@@ -289,8 +250,6 @@ class DatabaseService {
   }
 
   async deletePayoutRecord(id: string): Promise<void> {
-    if (!this.isConnected) throw new Error('Database not connected');
-    
     const result = await window.electronAPI.dbOperation('deleteOne', 'payouts', { _id: id });
     if (!result.success) {
       throw new Error(result.message || 'Failed to delete payout record');
@@ -299,8 +258,6 @@ class DatabaseService {
 
   // Utility methods
   async getEmployeeCount(): Promise<number> {
-    if (!this.isConnected) throw new Error('Database not connected');
-    
     const result = await window.electronAPI.dbOperation('count', 'employees');
     if (result.success) {
       return result.data || 0;
@@ -309,8 +266,6 @@ class DatabaseService {
   }
 
   async getAttendanceCount(): Promise<number> {
-    if (!this.isConnected) throw new Error('Database not connected');
-    
     const result = await window.electronAPI.dbOperation('count', 'attendance');
     if (result.success) {
       return result.data || 0;
@@ -373,14 +328,17 @@ class DatabaseService {
   async testConnection(config: DatabaseConfig): Promise<boolean> {
     try {
       const result = await this.connect(config);
-      if (result.success) {
-        this.isConnected = true;
+      this.isConnected = result.success;
+      
+      if (!result.success) {
+        console.error('Connection test failed:', result.message);
       }
+      
       return result.success;
     } catch (error) {
       console.error('Test connection error:', error);
       this.isConnected = false;
-      return false;
+      throw error; // Re-throw to let caller handle the error
     }
   }
 
@@ -430,22 +388,9 @@ class DatabaseService {
     return this.getAllEmployees();
   }
 
-  // Sample data seeding functions
-  async seedSampleData(): Promise<void> {
-    try {
-      // Sample data seeding removed - only employees and attendance data remain
-      // Sales, purchases, customers, and suppliers have been removed from the application
-    } catch (error) {
-      console.error('Error seeding sample data:', error);
-      throw error;
-    }
-  }
-
   // ==================== SALARY HISTORY OPERATIONS ====================
   
   async getSalaryHistory(employeeId: string): Promise<SalaryHistory[]> {
-    if (!this.isConnected) throw new Error('Database not connected');
-    
     const result = await window.electronAPI.dbOperation('find', 'salary_history', { 
       query: { employee_id: employeeId } 
     });
@@ -460,8 +405,6 @@ class DatabaseService {
   }
 
   async getAllSalaryHistory(): Promise<SalaryHistory[]> {
-    if (!this.isConnected) throw new Error('Database not connected');
-    
     const result = await window.electronAPI.dbOperation('find', 'salary_history');
     if (result.success) {
       const history = result.data || [];
@@ -473,8 +416,6 @@ class DatabaseService {
   }
 
   async addSalaryHistory(salaryHistory: Omit<SalaryHistory, '_id'>): Promise<SalaryHistory> {
-    if (!this.isConnected) throw new Error('Database not connected');
-    
     const newSalaryHistory = {
       ...salaryHistory,
       _id: new Date().getTime().toString(),
@@ -496,8 +437,6 @@ class DatabaseService {
     approvedBy: string,
     notes?: string
   ): Promise<{ success: boolean; salaryHistory: SalaryHistory; updatedEmployee: Employee }> {
-    if (!this.isConnected) throw new Error('Database not connected');
-    
     try {
       // Get current employee data
       const employee = await this.getEmployeeById(employeeId);
@@ -551,8 +490,6 @@ class DatabaseService {
   // ==================== EMPLOYMENT HISTORY OPERATIONS ====================
   
   async getEmploymentHistory(employeeId: string): Promise<EmploymentHistory[]> {
-    if (!this.isConnected) throw new Error('Database not connected');
-    
     const result = await window.electronAPI.dbOperation('find', 'employment_history', { 
       query: { employee_id: employeeId } 
     });
@@ -567,8 +504,6 @@ class DatabaseService {
   }
 
   async getAllEmploymentHistory(): Promise<EmploymentHistory[]> {
-    if (!this.isConnected) throw new Error('Database not connected');
-    
     const result = await window.electronAPI.dbOperation('find', 'employment_history');
     if (result.success) {
       const history = result.data || [];
@@ -580,8 +515,6 @@ class DatabaseService {
   }
 
   async addEmploymentHistory(employmentHistory: Omit<EmploymentHistory, '_id'>): Promise<EmploymentHistory> {
-    if (!this.isConnected) throw new Error('Database not connected');
-    
     const newEmploymentHistory = {
       ...employmentHistory,
       _id: new Date().getTime().toString(),
@@ -607,8 +540,6 @@ class DatabaseService {
     exitInterviewNotes?: string,
     notes?: string
   ): Promise<{ success: boolean; employmentHistory: EmploymentHistory; updatedEmployee: Employee }> {
-    if (!this.isConnected) throw new Error('Database not connected');
-    
     try {
       // Get current employee data
       const employee = await this.getEmployeeById(employeeId);
@@ -673,8 +604,6 @@ class DatabaseService {
 
   // Helper method to get employees needing salary review (> 12 months since last review)
   async getEmployeesNeedingSalaryReview(): Promise<Employee[]> {
-    if (!this.isConnected) throw new Error('Database not connected');
-    
     const employees = await this.getAllEmployees();
     const twelveMonthsAgo = new Date();
     twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
@@ -699,8 +628,6 @@ class DatabaseService {
     retired: number;
     averageTenure: number;
   }> {
-    if (!this.isConnected) throw new Error('Database not connected');
-    
     const allHistory = await this.getAllEmploymentHistory();
     
     // Filter by date range if provided
@@ -784,3 +711,4 @@ export const prepareConfigForConnection = (config: DatabaseConfig): DatabaseConf
 export type { PayoutRecord };
 export const databaseService = new DatabaseService();
 export default databaseService;
+

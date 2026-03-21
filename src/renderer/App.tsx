@@ -348,12 +348,24 @@ const DashboardPage = ({ onNavigate }: { onNavigate: (page: string) => void }) =
       const allAttendance = await databaseService.getAllAttendance();
       
       const todaysAttendance = allAttendance.filter((att: any) => {
-        const attDate = new Date(att.date).toISOString().split('T')[0];
-        return attDate === today && att.status === 'Present';
+        try {
+          const attDate = new Date(att.date);
+          if (isNaN(attDate.getTime())) return false; // Invalid date
+          const attDateStr = attDate.toISOString().split('T')[0];
+          return attDateStr === today && att.status === 'Present';
+        } catch {
+          return false;
+        }
       });
       const todaysAbsent = allAttendance.filter((att: any) => {
-        const attDate = new Date(att.date).toISOString().split('T')[0];
-        return attDate === today && att.status === 'Absent';
+        try {
+          const attDate = new Date(att.date);
+          if (isNaN(attDate.getTime())) return false; // Invalid date
+          const attDateStr = attDate.toISOString().split('T')[0];
+          return attDateStr === today && att.status === 'Absent';
+        } catch {
+          return false;
+        }
       });
       
       // Load monthly wage payouts
@@ -362,9 +374,14 @@ const DashboardPage = ({ onNavigate }: { onNavigate: (page: string) => void }) =
       const currentMonth = new Date().getMonth();
       const currentYear = new Date().getFullYear();
       const monthlyPayouts = allPayouts.filter((payout: any) => {
-        // Use payout_date field from PayoutRecord interface
-        const payoutDate = new Date(payout.payout_date);
-        return payoutDate.getMonth() === currentMonth && payoutDate.getFullYear() === currentYear;
+        try {
+          // Use payout_date field from PayoutRecord interface
+          const payoutDate = new Date(payout.payout_date);
+          if (isNaN(payoutDate.getTime())) return false; // Invalid date
+          return payoutDate.getMonth() === currentMonth && payoutDate.getFullYear() === currentYear;
+        } catch {
+          return false;
+        }
       });
       
       // Use actual_amount field from PayoutRecord interface

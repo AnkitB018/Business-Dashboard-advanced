@@ -286,10 +286,21 @@ const AttendanceManagement: React.FC = () => {
         // Check if record exists for this date
         const existingRecord = await databaseService.getAllAttendance().then((records: any[]) => {
           const found = records.find((r: any) => {
-            // Normalize both dates for comparison
-            const recordDate = typeof r.date === 'string' ? r.date : new Date(r.date).toISOString().split('T')[0];
-            const matches = r.employee_id === employee_id && recordDate === selectedDate;
-            return matches;
+            try {
+              // Normalize both dates for comparison
+              let recordDate: string;
+              if (typeof r.date === 'string') {
+                recordDate = r.date;
+              } else {
+                const dateObj = new Date(r.date);
+                if (isNaN(dateObj.getTime())) return false; // Invalid date
+                recordDate = dateObj.toISOString().split('T')[0];
+              }
+              const matches = r.employee_id === employee_id && recordDate === selectedDate;
+              return matches;
+            } catch {
+              return false;
+            }
           });
           return found;
         });

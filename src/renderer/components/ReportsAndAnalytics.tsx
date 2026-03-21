@@ -195,9 +195,15 @@ const ReportsAndAnalytics: React.FC = () => {
 
       // Calculate attendance metrics from real data
       const today = new Date().toDateString();
-      const todaysAttendance = attendanceData.filter(record => 
-        new Date(record.date).toDateString() === today
-      );
+      const todaysAttendance = attendanceData.filter(record => {
+        try {
+          const recordDate = new Date(record.date);
+          if (isNaN(recordDate.getTime())) return false;
+          return recordDate.toDateString() === today;
+        } catch {
+          return false;
+        }
+      });
       const presentToday = todaysAttendance.filter(record => record.status === 'Present').length;
       const totalEmployees = employeeData.length;
 
@@ -247,8 +253,13 @@ const ReportsAndAnalytics: React.FC = () => {
       
       // Filter attendance for current month
       const monthAttendance = allAttendance.filter((record: any) => {
-        const recordDate = new Date(record.date);
-        return recordDate >= firstDay && recordDate <= lastDay;
+        try {
+          const recordDate = new Date(record.date);
+          if (isNaN(recordDate.getTime())) return false;
+          return recordDate >= firstDay && recordDate <= lastDay;
+        } catch {
+          return false;
+        }
       });
       
       setCalendarData(monthAttendance);
@@ -568,7 +579,16 @@ const ReportsAndAnalytics: React.FC = () => {
         });
     }
     
-    return changes.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10);
+    return changes.sort((a, b) => {
+      try {
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) return 0;
+        return dateB.getTime() - dateA.getTime();
+      } catch {
+        return 0;
+      }
+    }).slice(0, 10);
   };
 
   // Export functionality
@@ -778,8 +798,14 @@ const ReportsAndAnalytics: React.FC = () => {
     
     // Find attendance record for this date
     const attendanceRecord = calendarData.find((record: any) => {
-      const recordDate = new Date(record.date).toISOString().split('T')[0];
-      return recordDate === dateStr && (selectedEmployee === 'all' || record.employee_id === selectedEmployee);
+      try {
+        const recordDate = new Date(record.date);
+        if (isNaN(recordDate.getTime())) return false;
+        const recordDateStr = recordDate.toISOString().split('T')[0];
+        return recordDateStr === dateStr && (selectedEmployee === 'all' || record.employee_id === selectedEmployee);
+      } catch {
+        return false;
+      }
     });
     
     if (!attendanceRecord) {
