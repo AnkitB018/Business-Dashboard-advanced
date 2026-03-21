@@ -11,29 +11,30 @@ export enum AttendanceStatus {
 // Form data interface for attendance management
 export interface AttendanceFormData {
   employee_id: string;
-  check_in_time: string;
-  check_out_time: string;
+  time_in: string;
+  time_out: string;
   date: string;
   status: 'Present' | 'Absent' | 'Late' | 'Half Day';
-  overtime_hours: number;
+  overtime_hour: number;
   notes: string;
 }
 
-// Attendance data model matching Python Attendance class
+// Attendance data model - consolidated interface
 export interface Attendance {
   _id?: string;
   attendance_id: string;
   employee_id: string;
   employee_name: string;
   date: Date;
-  check_in_time: string;
-  check_out_time?: string;
+  time_in: string;
+  time_out?: string;
+  break_time?: number;          // Break time in hours
   working_hours?: number;
-  overtime_hours?: number;
-  status: 'Present' | 'Absent' | 'Late' | 'Half Day';
+  overtime_hour?: number;
+  status: 'Present' | 'Absent' | 'Late' | 'Half Day' | 'Leave';
   notes?: string;
-  created_date: Date;
-  last_modified: Date;
+  created_at: Date;
+  updated_at: Date;
 }
 
 // Note: AttendanceModel class removed to avoid conflicts with simplified Attendance interface

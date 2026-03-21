@@ -306,14 +306,14 @@ export const validateAttendance = (data: any): ValidationErrors => {
   
   validator
     .required(data.employee_id, 'employee_id', 'Employee is required')
-    .required(data.check_in_time, 'check_in_time', 'Check-in time is required');
+    .required(data.time_in, 'time_in', 'Check-in time is required');
   
-  if (data.check_out_time && data.check_in_time) {
-    const checkIn = new Date(`${data.date}T${data.check_in_time}`);
-    const checkOut = new Date(`${data.date}T${data.check_out_time}`);
+  if (data.time_out && data.time_in) {
+    const checkIn = new Date(`${data.date}T${data.time_in}`);
+    const checkOut = new Date(`${data.date}T${data.time_out}`);
     
     if (checkOut <= checkIn) {
-      validator.custom(true, 'check_out_time', 'Check-out time must be after check-in time');
+      validator.custom(true, 'time_out', 'Check-out time must be after check-in time');
     }
   }
   

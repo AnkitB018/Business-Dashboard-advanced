@@ -4,24 +4,6 @@ import { DatabaseConfig } from '../types/Common';
 import { SalaryHistory } from '../types/SalaryHistory';
 import { EmploymentHistory } from '../types/EmploymentHistory';
 
-// Simplified interface for UI compatibility
-interface AttendanceRecord {
-  _id?: string;
-  employeeId: string;
-  employee_id: string;
-  employee_name: string;
-  date: string;
-  check_in_time: string;
-  check_out_time: string;
-  break_time: number;
-  working_hours: number;
-  overtime_hours: number;
-  status: 'Present' | 'Absent' | 'Leave';
-  notes?: string;
-  createdAt?: Date;
-  updatedAt?: Date;
-}
-
 interface PayoutRecord {
   _id?: string;
   employeeId: string;
@@ -145,7 +127,7 @@ class DatabaseService {
   }
 
   // Attendance operations
-  async getAllAttendance(): Promise<AttendanceRecord[]> {
+  async getAllAttendance(): Promise<Attendance[]> {
     if (!this.isConnected) throw new Error('Database not connected');
     
     const result = await window.electronAPI.dbOperation('find', 'attendance');
@@ -155,11 +137,11 @@ class DatabaseService {
     throw new Error(result.message || 'Failed to fetch attendance records');
   }
 
-  async getAttendanceByEmployeeId(employeeId: string): Promise<AttendanceRecord[]> {
+  async getAttendanceByEmployeeId(employeeId: string): Promise<Attendance[]> {
     if (!this.isConnected) throw new Error('Database not connected');
     
     const result = await window.electronAPI.dbOperation('find', 'attendance', { 
-      query: { employeeId } 
+      query: { employee_id: employeeId } 
     });
     if (result.success) {
       return result.data || [];
@@ -167,12 +149,12 @@ class DatabaseService {
     throw new Error(result.message || 'Failed to fetch employee attendance');
   }
 
-  async getAttendanceByEmployeeAndDateRange(employeeId: string, startDate: string, endDate: string): Promise<any[]> {
+  async getAttendanceByEmployeeAndDateRange(employeeId: string, startDate: string, endDate: string): Promise<Attendance[]> {
     if (!this.isConnected) throw new Error('Database not connected');
     
     const result = await window.electronAPI.dbOperation('find', 'attendance', { 
       query: { 
-        employeeId: employeeId,
+        employee_id: employeeId,
         date: {
           $gte: startDate,
           $lte: endDate
@@ -185,29 +167,29 @@ class DatabaseService {
     throw new Error(result.message || 'Failed to fetch employee attendance for date range');
   }
 
-  async addAttendanceRecord(record: Omit<AttendanceRecord, '_id'>): Promise<AttendanceRecord> {
+  async addAttendanceRecord(record: Omit<Attendance, '_id'>): Promise<Attendance> {
     if (!this.isConnected) throw new Error('Database not connected');
     
     const newRecord = {
       ...record,
       _id: new Date().getTime().toString(), // Simple ID generation
-      createdAt: new Date(),
-      updatedAt: new Date()
+      created_at: new Date(),
+      updated_at: new Date()
     };
 
     const result = await window.electronAPI.dbOperation('insertOne', 'attendance', newRecord);
     if (result.success) {
-      return newRecord as AttendanceRecord;
+      return newRecord as Attendance;
     }
     throw new Error(result.message || 'Failed to add attendance record');
   }
 
-  async updateAttendanceRecord(id: string, record: Partial<AttendanceRecord>): Promise<AttendanceRecord> {
+  async updateAttendanceRecord(id: string, record: Partial<Attendance>): Promise<Attendance> {
     if (!this.isConnected) throw new Error('Database not connected');
     
     const updateData = {
       ...record,
-      updatedAt: new Date()
+      updated_at: new Date()
     };
 
     const result = await window.electronAPI.dbOperation('updateOne', 'attendance', {
@@ -216,7 +198,7 @@ class DatabaseService {
     });
 
     if (result.success) {
-      return { ...record, _id: id } as AttendanceRecord;
+      return { ...record, _id: id } as Attendance;
     }
     throw new Error(result.message || 'Failed to update attendance record');
   }

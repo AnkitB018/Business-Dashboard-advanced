@@ -185,7 +185,6 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = () => {
     setLoading(true);
     try {
       const employeeId = extractObjectId(deleteEmployee._id);
-      console.log('Deleting employee with ID:', employeeId);
       
       await dbService.deleteEmployee(employeeId);
       showSnackbar('Employee deleted successfully', 'success');

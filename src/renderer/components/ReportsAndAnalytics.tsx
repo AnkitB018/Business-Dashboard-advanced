@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -273,7 +273,7 @@ const ReportsAndAnalytics: React.FC = () => {
     departments.forEach(dept => {
       const deptEmployees = employees.filter(e => e.department === dept);
       const deptPresent = todaysAttendance.filter(att => {
-        const emp = employees.find(e => e._id?.toString() === att.employeeId || e.employee_id === att.employeeId);
+        const emp = employees.find(e => e._id?.toString() === att.employee_id || e.employee_id === att.employee_id);
         return emp && emp.department === dept && att.status === 'Present';
       });
       
@@ -823,13 +823,12 @@ const ReportsAndAnalytics: React.FC = () => {
 
   const handleDateClick = (date: Date) => {
     // Handle date click - could show detailed attendance info for that date
-    console.log('Date clicked:', date);
+    // Reserved for future implementation
   };
 
   const exportChart = (chartType: string) => {
     // Implement chart export functionality
     showSnackbar(`Exporting ${chartType} chart...`, 'success');
-    console.log('Exporting chart:', chartType);
   };
 
   return (

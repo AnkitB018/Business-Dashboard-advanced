@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -75,7 +75,7 @@ function TabPanel(props: TabPanelProps) {
 }
 
 interface WageCalculationResult {
-  employeeId: string;
+  employee_id: string;
   employeeName: string;
   totalHours: number;
   exceptionHours: number;
@@ -90,7 +90,7 @@ interface WageCalculationResult {
 }
 
 interface BonusCalculationResult {
-  employeeId: string;
+  employee_id: string;
   employeeName: string;
   totalEarned: number;
   bonusRate: number;
@@ -101,7 +101,7 @@ interface BonusCalculationResult {
 }
 
 interface PayoutEmployeeData {
-  employeeId: string;
+  employee_id: string;
   employeeIdNumber: string;
   employeeName: string;
   totalHours: number;
@@ -271,8 +271,8 @@ const WageManagement: React.FC = () => {
         // Calculate total hours and break hours from attendance records
         for (const record of attendanceRecords) {
           const recordData = record as any;
-          if (recordData.check_in_time && recordData.check_out_time) {
-            const hoursWorked = calculateTotalHours(recordData.check_in_time, recordData.check_out_time);
+          if (recordData.time_in && recordData.time_out) {
+            const hoursWorked = calculateTotalHours(recordData.time_in, recordData.time_out);
             totalHours += hoursWorked;
           } else if (recordData.working_hours) {
             // If working hours are directly available
@@ -310,7 +310,7 @@ const WageManagement: React.FC = () => {
         const remainingWage = calculatedWage - paidWage;
 
         results.push({
-          employeeId: employeeData.employee_id || employeeData._id,
+          employee_id: employeeData.employee_id || employeeData._id,
           employeeName: employeeData.name || 'Unknown',
           totalHours,
           exceptionHours: totalBreakHours,
@@ -432,8 +432,8 @@ const WageManagement: React.FC = () => {
           const recordData = record as any;
           let hoursWorked = 0;
           
-          if (recordData.check_in_time && recordData.check_out_time) {
-            hoursWorked = calculateTotalHours(recordData.check_in_time, recordData.check_out_time);
+          if (recordData.time_in && recordData.time_out) {
+            hoursWorked = calculateTotalHours(recordData.time_in, recordData.time_out);
           } else if (recordData.working_hours) {
             hoursWorked = recordData.working_hours;
           } else if (recordData.status === 'present') {
@@ -451,7 +451,7 @@ const WageManagement: React.FC = () => {
         const bonusAmount = (totalEarned * bonusRate) / 100;
 
         results.push({
-          employeeId: employeeData.employee_id || employeeData._id,
+          employee_id: employeeData.employee_id || employeeData._id,
           employeeName: employeeData.name || 'Unknown',
           totalEarned,
           bonusRate,
@@ -537,8 +537,8 @@ const WageManagement: React.FC = () => {
           const recordData = record as any;
           let hoursWorked = 0;
           
-          if (recordData.check_in_time && recordData.check_out_time) {
-            hoursWorked = calculateTotalHours(recordData.check_in_time, recordData.check_out_time);
+          if (recordData.time_in && recordData.time_out) {
+            hoursWorked = calculateTotalHours(recordData.time_in, recordData.time_out);
           } else if (recordData.working_hours) {
             hoursWorked = recordData.working_hours;
           } else if (recordData.status === 'present') {
@@ -562,7 +562,7 @@ const WageManagement: React.FC = () => {
           calculatedAmount = (effectiveHours * dailyWage) / 8;
         } else {
           // Bonus calculation
-          const bonusRate = bonusResults.find(r => r.employeeId === (employeeData.employee_id || employeeData._id))?.bonusRate || 8.33;
+          const bonusRate = bonusResults.find(r => r.employee_id === (employeeData.employee_id || employeeData._id))?.bonusRate || 8.33;
           calculatedAmount = (totalEarned * bonusRate) / 100;
         }
 
@@ -583,7 +583,7 @@ const WageManagement: React.FC = () => {
         const remainingAmount = Math.max(0, calculatedAmount - paidAmount);
 
         payoutData.push({
-          employeeId: employeeData._id,
+          employee_id: employeeData._id,
           employeeIdNumber: employeeData.employee_id,
           employeeName: employeeData.name,
           totalHours,
@@ -614,9 +614,9 @@ const WageManagement: React.FC = () => {
   };
 
   // Toggle employee selection
-  const toggleEmployeeSelection = (employeeId: string) => {
+  const toggleEmployeeSelection = (employee_id: string) => {
     setPayoutEmployees(prev => prev.map(emp => 
-      emp.employeeId === employeeId ? { ...emp, selected: !emp.selected } : emp
+      emp.employee_id === employee_id ? { ...emp, selected: !emp.selected } : emp
     ));
   };
 
@@ -627,9 +627,9 @@ const WageManagement: React.FC = () => {
   };
 
   // Update payout amount
-  const updatePayoutAmount = (employeeId: string, amount: number) => {
+  const updatePayoutAmount = (employee_id: string, amount: number) => {
     setPayoutEmployees(prev => prev.map(emp => 
-      emp.employeeId === employeeId ? { ...emp, payoutAmount: amount } : emp
+      emp.employee_id === employee_id ? { ...emp, payoutAmount: amount } : emp
     ));
   };
 
@@ -647,7 +647,7 @@ const WageManagement: React.FC = () => {
 
       for (const emp of selectedEmployees) {
         const payoutRecord: Omit<PayoutRecord, '_id'> = {
-          employeeId: emp.employeeId,
+          employeeId: emp.employee_id,
           employee_id: emp.employeeIdNumber,
           employee_name: emp.employeeName,
           payout_type: payoutType,
@@ -880,7 +880,7 @@ const WageManagement: React.FC = () => {
                                     {result.employeeName}
                                   </Typography>
                                   <Typography variant="caption" color="text.secondary">
-                                    {result.employeeId} • {result.attendanceRecords} days
+                                    {result.employee_id} • {result.attendanceRecords} days
                                   </Typography>
                                 </Box>
                               </TableCell>
@@ -1139,7 +1139,7 @@ const WageManagement: React.FC = () => {
                                     {result.employeeName}
                                   </Typography>
                                   <Typography variant="caption" color="text.secondary">
-                                    {result.employeeId}
+                                    {result.employee_id}
                                   </Typography>
                                 </Box>
                               </TableCell>
@@ -1256,7 +1256,7 @@ const WageManagement: React.FC = () => {
                 <TableBody>
                   {payoutEmployees.map((emp) => (
                     <TableRow 
-                      key={emp.employeeId}
+                      key={emp.employee_id}
                       sx={{ 
                         bgcolor: emp.selected ? 'action.selected' : 'inherit',
                         '&:hover': { bgcolor: 'action.hover' }
@@ -1265,7 +1265,7 @@ const WageManagement: React.FC = () => {
                       <TableCell padding="checkbox">
                         <Checkbox
                           checked={emp.selected}
-                          onChange={() => toggleEmployeeSelection(emp.employeeId)}
+                          onChange={() => toggleEmployeeSelection(emp.employee_id)}
                         />
                       </TableCell>
                       <TableCell>
@@ -1320,7 +1320,7 @@ const WageManagement: React.FC = () => {
                         <TextField
                           type="number"
                           value={emp.payoutAmount}
-                          onChange={(e) => updatePayoutAmount(emp.employeeId, parseFloat(e.target.value) || 0)}
+                          onChange={(e) => updatePayoutAmount(emp.employee_id, parseFloat(e.target.value) || 0)}
                           size="small"
                           sx={{ width: 140 }}
                           InputProps={{

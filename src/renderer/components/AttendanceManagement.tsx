@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -48,28 +48,14 @@ import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import { Employee } from '../types/Employee';
+import { Attendance } from '../types/Attendance';
 import databaseService from '../services/DatabaseService';
-
-interface AttendanceRecord {
-  _id?: string;
-  employeeId: string;
-  employee_id: string;
-  employee_name: string;
-  date: string;
-  check_in_time: string;
-  check_out_time: string;
-  break_time: number; // in hours
-  working_hours: number;
-  overtime_hours: number;
-  status: 'Present' | 'Absent' | 'Leave';
-  notes?: string;
-}
 
 interface DayStatus {
   date: Date;
   status: 'Present' | 'Absent' | 'Leave' | 'None';
   working_hours?: number;
-  overtime_hours?: number;
+  overtime_hour?: number;
 }
 
 const AttendanceManagement: React.FC = () => {
@@ -77,7 +63,7 @@ const AttendanceManagement: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedEmployee, setSelectedEmployee] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<Attendance[]>([]);
   
   // Initialize calendar to show last 3 months (2 months ago + current)
   const getDefaultCalendarStart = () => {
@@ -91,8 +77,8 @@ const AttendanceManagement: React.FC = () => {
   // Form data for daily attendance entry
   const [dailyAttendance, setDailyAttendance] = useState<Map<string, {
     status: 'Present' | 'Absent' | 'Leave';
-    check_in_time: string;
-    check_out_time: string;
+    time_in: string;
+    time_out: string;
     break_time: number;
     notes: string;
   }>>(new Map());
@@ -103,7 +89,7 @@ const AttendanceManagement: React.FC = () => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
   const [activeTab, setActiveTab] = useState(0);
   const [dailySummaryDate, setDailySummaryDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [dailySummaryRecords, setDailySummaryRecords] = useState<AttendanceRecord[]>([]);
+  const [dailySummaryRecords, setDailySummaryRecords] = useState<Attendance[]>([]);
 
   useEffect(() => {
     loadEmployees();
@@ -175,10 +161,10 @@ const AttendanceManagement: React.FC = () => {
       // Populate the daily attendance map
       const attendanceMap = new Map();
       dateRecords.forEach((record: any) => {
-        attendanceMap.set(record.employeeId, {
+        attendanceMap.set(record.employee_id, {
           status: record.status || 'Present',
-          check_in_time: record.check_in_time || '',
-          check_out_time: record.check_out_time || '',
+          time_in: record.time_in || '',
+          time_out: record.time_out || '',
           break_time: record.break_time || 0,
           notes: record.notes || ''
         });
@@ -236,16 +222,16 @@ const AttendanceManagement: React.FC = () => {
     };
   };
 
-  const handleStatusChange = (employeeId: string, field: string, value: any) => {
-    const current = dailyAttendance.get(employeeId) || {
+  const handleStatusChange = (employee_id: string, field: string, value: any) => {
+    const current = dailyAttendance.get(employee_id) || {
       status: 'Present' as 'Present' | 'Absent' | 'Leave',
-      check_in_time: '08:00',
-      check_out_time: '17:00',
+      time_in: '08:00',
+      time_out: '17:00',
       break_time: 1,
       notes: ''
     };
     
-    setDailyAttendance(new Map(dailyAttendance.set(employeeId, {
+    setDailyAttendance(new Map(dailyAttendance.set(employee_id, {
       ...current,
       [field]: value
     })));
@@ -256,27 +242,25 @@ const AttendanceManagement: React.FC = () => {
       setLoading(true);
       let savedCount = 0;
       
-      console.log('Saving attendance for date:', selectedDate);
-      
       // Get all active employees for the selected date
       const activeEmployees = getActiveEmployeesOnDate(selectedDate);
       
       for (const employee of activeEmployees) {
-        const employeeId = employee._id!;
+        const employee_id = employee._id!;
         
         // Get attendance data or use defaults
-        const data = dailyAttendance.get(employeeId) || {
+        const data = dailyAttendance.get(employee_id) || {
           status: 'Present' as 'Present' | 'Absent' | 'Leave',
-          check_in_time: '08:00',
-          check_out_time: '17:00',
+          time_in: '08:00',
+          time_out: '17:00',
           break_time: 1,
           notes: ''
         };
         
         // Calculate working hours and overtime
         const calculation = calculateWorkingHours(
-          data.check_in_time,
-          data.check_out_time,
+          data.time_in,
+          data.time_out,
           data.break_time
         );
         
@@ -284,40 +268,35 @@ const AttendanceManagement: React.FC = () => {
         const finalStatus = data.status;
         
         const attendanceRecord = {
-          employeeId: employeeId,
-          employee_id: employee.employee_id,
+          attendance_id: `ATT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          employee_id: employee_id,
           employee_name: employee.name,
-          date: selectedDate,
-          check_in_time: data.check_in_time,
-          check_out_time: data.check_out_time,
+          date: new Date(selectedDate),
+          time_in: data.time_in,
+          time_out: data.time_out,
           break_time: data.break_time,
           working_hours: calculation.working,
-          overtime_hours: calculation.overtime,
+          overtime_hour: calculation.overtime,
           status: finalStatus,
-          notes: data.notes
+          notes: data.notes,
+          created_at: new Date(),
+          updated_at: new Date()
         };
-        
-        console.log('Attendance record to save:', attendanceRecord);
         
         // Check if record exists for this date
         const existingRecord = await databaseService.getAllAttendance().then((records: any[]) => {
           const found = records.find((r: any) => {
             // Normalize both dates for comparison
             const recordDate = typeof r.date === 'string' ? r.date : new Date(r.date).toISOString().split('T')[0];
-            const matches = r.employeeId === employeeId && recordDate === selectedDate;
-            if (matches) {
-              console.log('Found existing record:', r._id, 'for date:', recordDate);
-            }
+            const matches = r.employee_id === employee_id && recordDate === selectedDate;
             return matches;
           });
           return found;
         });
         
         if (existingRecord) {
-          console.log('Updating existing record:', existingRecord._id);
           await databaseService.updateAttendanceRecord(existingRecord._id, attendanceRecord);
         } else {
-          console.log('Adding new attendance record');
           await databaseService.addAttendanceRecord(attendanceRecord);
         }
         
@@ -364,7 +343,7 @@ const AttendanceManagement: React.FC = () => {
         date,
         status: record ? (record.status as any) : 'None',
         working_hours: record?.working_hours,
-        overtime_hours: record?.overtime_hours
+        overtime_hour: record?.overtime_hour
       });
     }
     
@@ -437,8 +416,8 @@ const AttendanceManagement: React.FC = () => {
   };
 
   // Calculate calendar start month based on employee hire date
-  const getCalendarStartMonth = (employeeId: string): Date => {
-    const employee = employees.find(e => e._id === employeeId);
+  const getCalendarStartMonth = (employee_id: string): Date => {
+    const employee = employees.find(e => e._id === employee_id);
     if (!employee) return getDefaultCalendarStart();
     
     const today = new Date();
@@ -461,10 +440,10 @@ const AttendanceManagement: React.FC = () => {
   };
 
   // Handle employee selection and update calendar start month
-  const handleEmployeeSelection = (employeeId: string) => {
-    setSelectedEmployee(employeeId);
-    if (employeeId) {
-      const startMonth = getCalendarStartMonth(employeeId);
+  const handleEmployeeSelection = (employee_id: string) => {
+    setSelectedEmployee(employee_id);
+    if (employee_id) {
+      const startMonth = getCalendarStartMonth(employee_id);
       setCalendarStartMonth(startMonth);
     }
   };
@@ -581,7 +560,7 @@ const AttendanceManagement: React.FC = () => {
                                     <Tooltip 
                                       key={i}
                                       title={day.status !== 'None' ? 
-                                        `${day.status} - ${day.working_hours || 0}hrs${day.overtime_hours ? `, OT: ${day.overtime_hours}hrs` : ''}` 
+                                        `${day.status} - ${day.working_hours || 0}hrs${day.overtime_hour ? `, OT: ${day.overtime_hour}hrs` : ''}` 
                                         : 'No record'
                                       }
                                     >
@@ -680,7 +659,7 @@ const AttendanceManagement: React.FC = () => {
                     </TableHead>
                     <TableBody>
                       {getActiveEmployeesOnDate(dailySummaryDate).map((employee) => {
-                        const record = dailySummaryRecords.find(r => r.employeeId === employee._id);
+                        const record = dailySummaryRecords.find(r => r.employee_id === employee._id);
                         
                         return (
                           <TableRow key={employee._id} hover>
@@ -709,14 +688,14 @@ const AttendanceManagement: React.FC = () => {
                             </TableCell>
                             <TableCell>
                               {record?.status === 'Present' ? (
-                                <Typography variant="body2">{record.check_in_time || '-'}</Typography>
+                                <Typography variant="body2">{record.time_in || '-'}</Typography>
                               ) : (
                                 <Typography variant="body2" color="text.secondary">-</Typography>
                               )}
                             </TableCell>
                             <TableCell>
                               {record?.status === 'Present' ? (
-                                <Typography variant="body2">{record.check_out_time || '-'}</Typography>
+                                <Typography variant="body2">{record.time_out || '-'}</Typography>
                               ) : (
                                 <Typography variant="body2" color="text.secondary">-</Typography>
                               )}
@@ -741,9 +720,9 @@ const AttendanceManagement: React.FC = () => {
                               )}
                             </TableCell>
                             <TableCell>
-                              {record?.status === 'Present' && record.overtime_hours > 0 ? (
+                              {record?.status === 'Present' && (record.overtime_hour || 0) > 0 ? (
                                 <Chip 
-                                  label={`+${record.overtime_hours}h`} 
+                                  label={`+${record.overtime_hour}h`} 
                                   size="small" 
                                   color="success"
                                 />
@@ -855,15 +834,15 @@ const AttendanceManagement: React.FC = () => {
                   {getActiveEmployeesOnDate(selectedDate).map((employee) => {
                     const attendance = dailyAttendance.get(employee._id!) || {
                       status: 'Present' as 'Present' | 'Absent' | 'Leave',
-                      check_in_time: '08:00',
-                      check_out_time: '17:00',
+                      time_in: '08:00',
+                      time_out: '17:00',
                       break_time: 1,
                       notes: ''
                     };
                     
                     const calculation = calculateWorkingHours(
-                      attendance.check_in_time,
-                      attendance.check_out_time,
+                      attendance.time_in,
+                      attendance.time_out,
                       attendance.break_time
                     );
 
@@ -896,10 +875,10 @@ const AttendanceManagement: React.FC = () => {
                           {attendance.status === 'Present' && (
                             <LocalizationProvider dateAdapter={AdapterDayjs}>
                               <TimePicker
-                                value={attendance.check_in_time ? dayjs(`2000-01-01T${attendance.check_in_time}`) : null}
+                                value={attendance.time_in ? dayjs(`2000-01-01T${attendance.time_in}`) : null}
                                 onChange={(newValue: Dayjs | null) => {
                                   const timeStr = newValue ? newValue.format('HH:mm') : '';
-                                  handleStatusChange(employee._id!, 'check_in_time', timeStr);
+                                  handleStatusChange(employee._id!, 'time_in', timeStr);
                                 }}
                                 slotProps={{
                                   textField: {
@@ -915,10 +894,10 @@ const AttendanceManagement: React.FC = () => {
                           {attendance.status === 'Present' && (
                             <LocalizationProvider dateAdapter={AdapterDayjs}>
                               <TimePicker
-                                value={attendance.check_out_time ? dayjs(`2000-01-01T${attendance.check_out_time}`) : null}
+                                value={attendance.time_out ? dayjs(`2000-01-01T${attendance.time_out}`) : null}
                                 onChange={(newValue: Dayjs | null) => {
                                   const timeStr = newValue ? newValue.format('HH:mm') : '';
-                                  handleStatusChange(employee._id!, 'check_out_time', timeStr);
+                                  handleStatusChange(employee._id!, 'time_out', timeStr);
                                 }}
                                 slotProps={{
                                   textField: {
@@ -943,7 +922,7 @@ const AttendanceManagement: React.FC = () => {
                           )}
                         </TableCell>
                         <TableCell>
-                          {attendance.status === 'Present' && attendance.check_in_time && attendance.check_out_time && (
+                          {attendance.status === 'Present' && attendance.time_in && attendance.time_out && (
                             <Chip 
                               label={`${calculation.working}h`} 
                               size="small"
