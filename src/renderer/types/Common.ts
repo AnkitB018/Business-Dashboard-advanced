@@ -22,7 +22,7 @@ export interface EmployeeStatistics {
   departmentDistribution: Record<string, number>;
   highestPaidEmployee?: {
     name: string;
-    salary: number;
+    daily_wage: number;
   };
   attendanceStats?: {
     totalPresentDays: number;

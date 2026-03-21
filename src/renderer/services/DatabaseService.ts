@@ -542,7 +542,7 @@ class DatabaseService {
         reason,
         approved_by: approvedBy,
         notes,
-        created_at: new Date()
+        created_date: new Date()
       };
 
       // Add salary history record
@@ -658,7 +658,7 @@ class DatabaseService {
         exit_interview_notes: exitInterviewNotes,
         notes,
         processed_by: processedBy,
-        created_at: new Date()
+        created_date: new Date()
       };
 
       // Add employment history record
