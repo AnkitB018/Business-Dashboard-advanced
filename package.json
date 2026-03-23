@@ -49,6 +49,7 @@
         }
       ],
       "icon": "build/icon.ico",
+      "artifactName": "business-dashboard-setup-${version}.${ext}",
       "verifyUpdateCodeSignature": false,
       "signAndEditExecutable": false
     },
