@@ -4,6 +4,7 @@
 # Documentation
 docs/
 build/
+data/
 
 # Dependencies
 node_modules/

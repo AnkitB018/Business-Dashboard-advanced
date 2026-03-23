@@ -267,11 +267,13 @@ const AttendanceManagement: React.FC = () => {
         // Use the selected status as final status
         const finalStatus = data.status;
         
+        // Generate attendance_id using employee._id + date format (matches migration format)
+        const dateStr = selectedDate; // Already in YYYY-MM-DD format
         const attendanceRecord = {
-          attendance_id: `ATT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          attendance_id: `${employee_id}-${dateStr}`,
           employee_id: employee_id,
           employee_name: employee.name,
-          date: new Date(selectedDate),
+          date: selectedDate, // Store as string (YYYY-MM-DD) for consistency
           time_in: data.time_in,
           time_out: data.time_out,
           break_time: data.break_time,

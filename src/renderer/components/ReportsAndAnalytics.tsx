@@ -284,7 +284,8 @@ const ReportsAndAnalytics: React.FC = () => {
     departments.forEach(dept => {
       const deptEmployees = employees.filter(e => e.department === dept);
       const deptPresent = todaysAttendance.filter(att => {
-        const emp = employees.find(e => e._id?.toString() === att.employee_id || e.employee_id === att.employee_id);
+        // attendance.employee_id now stores employee._id
+        const emp = employees.find(e => e._id === att.employee_id);
         return emp && emp.department === dept && att.status === 'Present';
       });
       

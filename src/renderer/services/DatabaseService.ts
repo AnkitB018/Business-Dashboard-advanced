@@ -118,6 +118,7 @@ class DatabaseService {
     throw new Error(result.message || 'Failed to fetch attendance records');
   }
 
+  // Get attendance by employee._id (not employee.employee_id)
   async getAttendanceByEmployeeId(employeeId: string): Promise<Attendance[]> {
     const result = await window.electronAPI.dbOperation('find', 'attendance', { 
       query: { employee_id: employeeId } 
@@ -128,6 +129,7 @@ class DatabaseService {
     throw new Error(result.message || 'Failed to fetch employee attendance');
   }
 
+  // Get attendance by employee._id and date range (employeeId = employee._id, not employee.employee_id)
   async getAttendanceByEmployeeAndDateRange(employeeId: string, startDate: string, endDate: string): Promise<Attendance[]> {
     const result = await window.electronAPI.dbOperation('find', 'attendance', { 
       query: { 

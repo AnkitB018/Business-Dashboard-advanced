@@ -22,8 +22,8 @@ export interface AttendanceFormData {
 // Attendance data model - consolidated interface
 export interface Attendance {
   _id?: string;
-  attendance_id: string;
-  employee_id: string;
+  attendance_id: string;           // Format: {employee._id}-{YYYY-MM-DD}
+  employee_id: string;              // References employee._id (NOT employee.employee_id)
   employee_name: string;
   date: Date;
   time_in: string;

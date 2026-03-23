@@ -310,7 +310,7 @@ const WageManagement: React.FC = () => {
         const remainingWage = calculatedWage - paidWage;
 
         results.push({
-          employee_id: employeeData.employee_id || employeeData._id,
+          employee_id: employeeData._id,
           employeeName: employeeData.name || 'Unknown',
           totalHours,
           exceptionHours: totalBreakHours,
@@ -451,7 +451,7 @@ const WageManagement: React.FC = () => {
         const bonusAmount = (totalEarned * bonusRate) / 100;
 
         results.push({
-          employee_id: employeeData.employee_id || employeeData._id,
+          employee_id: employeeData._id,
           employeeName: employeeData.name || 'Unknown',
           totalEarned,
           bonusRate,
@@ -561,8 +561,8 @@ const WageManagement: React.FC = () => {
         if (type === 'wage') {
           calculatedAmount = (effectiveHours * dailyWage) / 8;
         } else {
-          // Bonus calculation
-          const bonusRate = bonusResults.find(r => r.employee_id === (employeeData.employee_id || employeeData._id))?.bonusRate || 8.33;
+          // Bonus calculation - attendance.employee_id now stores employee._id
+          const bonusRate = bonusResults.find(r => r.employee_id === employeeData._id)?.bonusRate || 8.33;
           calculatedAmount = (totalEarned * bonusRate) / 100;
         }
 

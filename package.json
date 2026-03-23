@@ -1,7 +1,7 @@
 {
   "name": "business-dashboard-electron",
   "productName": "Business Dashboard",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Employee Management, Wage Calculation, and Business Analytics Dashboard",
   "main": "dist/main.js",
   "author": {
