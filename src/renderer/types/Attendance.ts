@@ -25,7 +25,7 @@ export interface Attendance {
   attendance_id: string;           // Format: {employee._id}-{YYYY-MM-DD}
   employee_id: string;              // References employee._id (NOT employee.employee_id)
   employee_name: string;
-  date: Date;
+  date: string;                     // YYYY-MM-DD format
   time_in: string;
   time_out?: string;
   break_time?: number;          // Break time in hours
@@ -33,8 +33,8 @@ export interface Attendance {
   overtime_hour?: number;
   status: 'Present' | 'Absent' | 'Late' | 'Half Day' | 'Leave';
   notes?: string;
-  created_at: Date;
-  updated_at: Date;
+  created_at: string;               // ISO timestamp
+  updated_at: string;               // ISO timestamp
 }
 
 // Note: AttendanceModel class removed to avoid conflicts with simplified Attendance interface

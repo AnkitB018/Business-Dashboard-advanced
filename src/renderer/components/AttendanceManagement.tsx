@@ -281,8 +281,8 @@ const AttendanceManagement: React.FC = () => {
           overtime_hour: calculation.overtime,
           status: finalStatus,
           notes: data.notes,
-          created_at: new Date(),
-          updated_at: new Date()
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         };
         
         // Check if record exists for this date

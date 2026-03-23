@@ -150,8 +150,8 @@ class DatabaseService {
     const newRecord = {
       ...record,
       _id: new Date().getTime().toString(), // Simple ID generation
-      created_at: new Date(),
-      updated_at: new Date()
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
 
     const result = await window.electronAPI.dbOperation('insertOne', 'attendance', newRecord);
@@ -164,7 +164,7 @@ class DatabaseService {
   async updateAttendanceRecord(id: string, record: Partial<Attendance>): Promise<Attendance> {
     const updateData = {
       ...record,
-      updated_at: new Date()
+      updated_at: new Date().toISOString()
     };
 
     const result = await window.electronAPI.dbOperation('updateOne', 'attendance', {
