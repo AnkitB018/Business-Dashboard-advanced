@@ -1,11 +1,7 @@
 ﻿// Attendance status enum for type safety
 export enum AttendanceStatus {
   PRESENT = 'Present',
-  ABSENT = 'Absent',
-  LATE = 'Late',
-  HALF_DAY = 'Half Day',
-  HOLIDAY = 'Holiday',
-  ON_LEAVE = 'Leave'
+  ABSENT = 'Absent'
 }
 
 // Form data interface for attendance management
@@ -14,7 +10,7 @@ export interface AttendanceFormData {
   time_in: string;
   time_out: string;
   date: string;
-  status: 'Present' | 'Absent' | 'Late' | 'Half Day';
+  status: 'Present' | 'Absent';
   overtime_hour: number;
   notes: string;
 }
@@ -31,7 +27,7 @@ export interface Attendance {
   break_time?: number;          // Break time in hours
   working_hours?: number;
   overtime_hour?: number;
-  status: 'Present' | 'Absent' | 'Late' | 'Half Day' | 'Leave';
+  status: 'Present' | 'Absent';
   notes?: string;
   created_at: string;               // ISO timestamp
   updated_at: string;               // ISO timestamp

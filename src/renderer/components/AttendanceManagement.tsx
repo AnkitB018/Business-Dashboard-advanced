@@ -53,7 +53,7 @@ import databaseService from '../services/DatabaseService';
 
 interface DayStatus {
   date: Date;
-  status: 'Present' | 'Absent' | 'Leave' | 'None';
+  status: 'Present' | 'Absent' | 'None';
   working_hours?: number;
   overtime_hour?: number;
 }
@@ -76,7 +76,7 @@ const AttendanceManagement: React.FC = () => {
   
   // Form data for daily attendance entry
   const [dailyAttendance, setDailyAttendance] = useState<Map<string, {
-    status: 'Present' | 'Absent' | 'Leave';
+    status: 'Present' | 'Absent';
     time_in: string;
     time_out: string;
     break_time: number;
@@ -161,8 +161,14 @@ const AttendanceManagement: React.FC = () => {
       // Populate the daily attendance map
       const attendanceMap = new Map();
       dateRecords.forEach((record: any) => {
+        // Convert old 'Leave' status to 'Absent' for compatibility
+        let status: 'Present' | 'Absent' = record.status || 'Present';
+        if (status === 'Leave' as any) {
+          status = 'Absent';
+        }
+        
         attendanceMap.set(record.employee_id, {
-          status: record.status || 'Present',
+          status: status,
           time_in: record.time_in || '',
           time_out: record.time_out || '',
           break_time: record.break_time || 0,
@@ -224,7 +230,7 @@ const AttendanceManagement: React.FC = () => {
 
   const handleStatusChange = (employee_id: string, field: string, value: any) => {
     const current = dailyAttendance.get(employee_id) || {
-      status: 'Present' as 'Present' | 'Absent' | 'Leave',
+      status: 'Present' as 'Present' | 'Absent',
       time_in: '08:00',
       time_out: '17:00',
       break_time: 1,
@@ -250,22 +256,42 @@ const AttendanceManagement: React.FC = () => {
         
         // Get attendance data or use defaults
         const data = dailyAttendance.get(employee_id) || {
-          status: 'Present' as 'Present' | 'Absent' | 'Leave',
+          status: 'Present' as 'Present' | 'Absent',
           time_in: '08:00',
           time_out: '17:00',
           break_time: 1,
           notes: ''
         };
         
-        // Calculate working hours and overtime
-        const calculation = calculateWorkingHours(
-          data.time_in,
-          data.time_out,
-          data.break_time
-        );
-        
         // Use the selected status as final status
-        const finalStatus = data.status;
+        const finalStatus: 'Present' | 'Absent' = data.status;
+        
+        // Prepare attendance data based on status
+        let attendanceData;
+        if (finalStatus === 'Absent') {
+          // For absent employees, clear time fields and set hours to 0
+          attendanceData = {
+            time_in: '',
+            time_out: '',
+            break_time: 0,
+            working_hours: 0,
+            overtime_hour: 0
+          };
+        } else {
+          // For present employees, calculate working hours and overtime
+          const calculation = calculateWorkingHours(
+            data.time_in,
+            data.time_out,
+            data.break_time
+          );
+          attendanceData = {
+            time_in: data.time_in,
+            time_out: data.time_out,
+            break_time: data.break_time,
+            working_hours: calculation.working,
+            overtime_hour: calculation.overtime
+          };
+        }
         
         // Generate attendance_id using employee._id + date format (matches migration format)
         const dateStr = selectedDate; // Already in YYYY-MM-DD format
@@ -274,11 +300,7 @@ const AttendanceManagement: React.FC = () => {
           employee_id: employee_id,
           employee_name: employee.name,
           date: selectedDate, // Store as string (YYYY-MM-DD) for consistency
-          time_in: data.time_in,
-          time_out: data.time_out,
-          break_time: data.break_time,
-          working_hours: calculation.working,
-          overtime_hour: calculation.overtime,
+          ...attendanceData,
           status: finalStatus,
           notes: data.notes,
           created_at: new Date().toISOString(),
@@ -366,7 +388,6 @@ const AttendanceManagement: React.FC = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Present': return 'success';  // Green
-      case 'Leave': return 'warning';     // Orange
       case 'Absent': return 'error';      // Deep Red
       default: return 'default';
     }
@@ -376,7 +397,6 @@ const AttendanceManagement: React.FC = () => {
     switch (status) {
       case 'Present': return <CheckCircle fontSize="small" />;
       case 'Absent': return <Cancel fontSize="small" />;
-      case 'Leave': return <AccessTime fontSize="small" />;
       default: return null;
     }
   };
@@ -587,7 +607,6 @@ const AttendanceManagement: React.FC = () => {
                                         cursor: 'pointer',
                                         bgcolor: day.status !== 'None' ? 
                                           (day.status === 'Present' ? 'success.main' :
-                                           day.status === 'Leave' ? 'warning.main' :
                                            day.status === 'Absent' ? 'error.dark' : 'transparent') : 
                                           'transparent',
                                         color: day.status !== 'None' ? 'white' : 'text.primary',
@@ -611,7 +630,6 @@ const AttendanceManagement: React.FC = () => {
                     {/* Legend */}
                     <Box sx={{ mt: 2, display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
                       <Chip label="Present" size="small" color="success" />
-                      <Chip label="Leave" size="small" color="warning" />
                       <Chip label="Absent" size="small" color="error" />
                     </Box>
                   </Box>
@@ -768,14 +786,6 @@ const AttendanceManagement: React.FC = () => {
                   </Card>
                   <Card variant="outlined" sx={{ flex: 1, minWidth: 150 }}>
                     <CardContent>
-                      <Typography variant="caption" color="text.secondary">On Leave</Typography>
-                      <Typography variant="h4" color="warning.main">
-                        {dailySummaryRecords.filter(r => r.status === 'Leave').length}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                  <Card variant="outlined" sx={{ flex: 1, minWidth: 150 }}>
-                    <CardContent>
                       <Typography variant="caption" color="text.secondary">Absent</Typography>
                       <Typography variant="h4" color="error.main">
                         {dailySummaryRecords.filter(r => r.status === 'Absent').length}
@@ -846,7 +856,7 @@ const AttendanceManagement: React.FC = () => {
                 <TableBody>
                   {getActiveEmployeesOnDate(selectedDate).map((employee) => {
                     const attendance = dailyAttendance.get(employee._id!) || {
-                      status: 'Present' as 'Present' | 'Absent' | 'Leave',
+                      status: 'Present' as 'Present' | 'Absent',
                       time_in: '08:00',
                       time_out: '17:00',
                       break_time: 1,
@@ -881,7 +891,6 @@ const AttendanceManagement: React.FC = () => {
                           >
                             <MenuItem value="Present">Present</MenuItem>
                             <MenuItem value="Absent">Absent</MenuItem>
-                            <MenuItem value="Leave">Leave</MenuItem>
                           </Select>
                         </TableCell>
                         <TableCell>

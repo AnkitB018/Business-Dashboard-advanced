@@ -271,13 +271,19 @@ const WageManagement: React.FC = () => {
         // Calculate total hours and break hours from attendance records
         for (const record of attendanceRecords) {
           const recordData = record as any;
+          
+          // Skip absent employees - they earn 0
+          if (recordData.status === 'Absent') {
+            continue;
+          }
+          
           if (recordData.time_in && recordData.time_out) {
             const hoursWorked = calculateTotalHours(recordData.time_in, recordData.time_out);
             totalHours += hoursWorked;
           } else if (recordData.working_hours) {
             // If working hours are directly available
             totalHours += recordData.working_hours;
-          } else if (recordData.status === 'present') {
+          } else if (recordData.status === 'Present') {
             // Default to 8 hours for present days without time data
             totalHours += 8;
           }
@@ -430,13 +436,19 @@ const WageManagement: React.FC = () => {
         // Calculate total earnings for the period
         for (const record of attendanceRecords) {
           const recordData = record as any;
+          
+          // Skip absent employees - they earn 0
+          if (recordData.status === 'Absent') {
+            continue;
+          }
+          
           let hoursWorked = 0;
           
           if (recordData.time_in && recordData.time_out) {
             hoursWorked = calculateTotalHours(recordData.time_in, recordData.time_out);
           } else if (recordData.working_hours) {
             hoursWorked = recordData.working_hours;
-          } else if (recordData.status === 'present') {
+          } else if (recordData.status === 'Present') {
             hoursWorked = 8; // Default to 8 hours
           }
           
@@ -535,13 +547,19 @@ const WageManagement: React.FC = () => {
         // Calculate hours and earnings
         for (const record of attendanceRecords) {
           const recordData = record as any;
+          
+          // Skip absent employees - they earn 0
+          if (recordData.status === 'Absent') {
+            continue;
+          }
+          
           let hoursWorked = 0;
           
           if (recordData.time_in && recordData.time_out) {
             hoursWorked = calculateTotalHours(recordData.time_in, recordData.time_out);
           } else if (recordData.working_hours) {
             hoursWorked = recordData.working_hours;
-          } else if (recordData.status === 'present') {
+          } else if (recordData.status === 'Present') {
             hoursWorked = 8;
           }
           
