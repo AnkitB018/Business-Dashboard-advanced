@@ -203,6 +203,21 @@ const AttendanceManagement: React.FC = () => {
     }
   };
 
+  const navigateDailySummaryDate = (direction: 'prev' | 'next') => {
+    const currentDate = new Date(dailySummaryDate);
+    if (direction === 'prev') {
+      currentDate.setDate(currentDate.getDate() - 1);
+    } else {
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    const newDate = currentDate.toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0];
+    // Don't allow future dates
+    if (newDate <= today) {
+      setDailySummaryDate(newDate);
+    }
+  };
+
   const calculateWorkingHours = (checkIn: string, checkOut: string, breakTime: number): { 
     working: number; 
     overtime: number; 
@@ -652,15 +667,33 @@ const AttendanceManagement: React.FC = () => {
                 <Typography variant="h6">
                   Daily Attendance Summary
                 </Typography>
-                <TextField
-                  type="date"
-                  label="Select Date"
-                  value={dailySummaryDate}
-                  onChange={(e) => setDailySummaryDate(e.target.value)}
-                  InputLabelProps={{ shrink: true }}
-                  size="small"
-                  sx={{ width: 200 }}
-                />
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <IconButton 
+                    size="small" 
+                    onClick={() => navigateDailySummaryDate('prev')}
+                    title="Previous Day"
+                  >
+                    <ArrowBack />
+                  </IconButton>
+                  <TextField
+                    type="date"
+                    label="Select Date"
+                    value={dailySummaryDate}
+                    onChange={(e) => setDailySummaryDate(e.target.value)}
+                    inputProps={{ max: new Date().toISOString().split('T')[0] }}
+                    InputLabelProps={{ shrink: true }}
+                    size="small"
+                    sx={{ width: 200 }}
+                  />
+                  <IconButton 
+                    size="small" 
+                    onClick={() => navigateDailySummaryDate('next')}
+                    disabled={dailySummaryDate >= new Date().toISOString().split('T')[0]}
+                    title="Next Day"
+                  >
+                    <ArrowForward />
+                  </IconButton>
+                </Box>
                 <IconButton size="small" onClick={loadDailySummary}>
                   <Refresh />
                 </IconButton>
@@ -824,6 +857,7 @@ const AttendanceManagement: React.FC = () => {
               label="Select Date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
+              inputProps={{ max: new Date().toISOString().split('T')[0] }}
               InputLabelProps={{ shrink: true }}
               fullWidth
             />

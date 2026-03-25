@@ -279,10 +279,10 @@ const WageManagement: React.FC = () => {
           
           if (recordData.time_in && recordData.time_out) {
             const hoursWorked = calculateTotalHours(recordData.time_in, recordData.time_out);
-            totalHours += hoursWorked;
+            totalHours += Number(hoursWorked) || 0;
           } else if (recordData.working_hours) {
             // If working hours are directly available
-            totalHours += recordData.working_hours;
+            totalHours += Number(recordData.working_hours) || 0;
           } else if (recordData.status === 'Present') {
             // Default to 8 hours for present days without time data
             totalHours += 8;
@@ -290,13 +290,13 @@ const WageManagement: React.FC = () => {
           
           // Accumulate break time from each record
           if (recordData.break_time) {
-            totalBreakHours += recordData.break_time;
+            totalBreakHours += Number(recordData.break_time) || 0;
           }
         }
 
         // Calculate effective hours and wage
         const effectiveHours = Math.max(0, totalHours - totalBreakHours);
-        const dailyWage = employeeData.daily_wage || 0;
+        const dailyWage = Number(employeeData.daily_wage) || 0;
         const calculatedWage = (effectiveHours * dailyWage) / 8;
 
         // Get payout records for this employee in this period
@@ -318,13 +318,13 @@ const WageManagement: React.FC = () => {
         results.push({
           employee_id: employeeData._id,
           employeeName: employeeData.name || 'Unknown',
-          totalHours,
-          exceptionHours: totalBreakHours,
-          effectiveHours,
-          dailyWage,
-          calculatedWage,
-          paidWage,
-          remainingWage,
+          totalHours: Number(totalHours) || 0,
+          exceptionHours: Number(totalBreakHours) || 0,
+          effectiveHours: Number(effectiveHours) || 0,
+          dailyWage: Number(dailyWage) || 0,
+          calculatedWage: Number(calculatedWage) || 0,
+          paidWage: Number(paidWage) || 0,
+          remainingWage: Number(remainingWage) || 0,
           periodStart: wageCalculationPeriod.startDate,
           periodEnd: wageCalculationPeriod.endDate,
           attendanceRecords: attendanceRecords.length
@@ -431,7 +431,7 @@ const WageManagement: React.FC = () => {
         );
 
         let totalEarned = 0;
-        const dailyWage = employeeData.daily_wage || 0;
+        const dailyWage = Number(employeeData.daily_wage) || 0;
         
         // Calculate total earnings for the period
         for (const record of attendanceRecords) {
@@ -447,13 +447,13 @@ const WageManagement: React.FC = () => {
           if (recordData.time_in && recordData.time_out) {
             hoursWorked = calculateTotalHours(recordData.time_in, recordData.time_out);
           } else if (recordData.working_hours) {
-            hoursWorked = recordData.working_hours;
+            hoursWorked = Number(recordData.working_hours) || 0;
           } else if (recordData.status === 'Present') {
             hoursWorked = 8; // Default to 8 hours
           }
           
           // Calculate daily earnings with break time from attendance record
-          const breakHours = recordData.break_time || 0;
+          const breakHours = Number(recordData.break_time) || 0;
           const effectiveHours = Math.max(0, hoursWorked - breakHours);
           const dailyEarnings = (effectiveHours * dailyWage) / 8;
           totalEarned += dailyEarnings;
@@ -465,9 +465,9 @@ const WageManagement: React.FC = () => {
         results.push({
           employee_id: employeeData._id,
           employeeName: employeeData.name || 'Unknown',
-          totalEarned,
-          bonusRate,
-          bonusAmount,
+          totalEarned: Number(totalEarned) || 0,
+          bonusRate: Number(bonusRate) || 8.33,
+          bonusAmount: Number(bonusAmount) || 0,
           periodStart: bonusCalculationPeriod.startDate,
           periodEnd: bonusCalculationPeriod.endDate,
           lastBonusPaid: employeeData.last_bonus_paid || 'Never'
@@ -542,7 +542,7 @@ const WageManagement: React.FC = () => {
         let totalHours = 0;
         let totalBreakHours = 0;
         let totalEarned = 0;
-        const dailyWage = employeeData.daily_wage || 0;
+        const dailyWage = Number(employeeData.daily_wage) || 0;
         
         // Calculate hours and earnings
         for (const record of attendanceRecords) {
@@ -558,14 +558,14 @@ const WageManagement: React.FC = () => {
           if (recordData.time_in && recordData.time_out) {
             hoursWorked = calculateTotalHours(recordData.time_in, recordData.time_out);
           } else if (recordData.working_hours) {
-            hoursWorked = recordData.working_hours;
+            hoursWorked = Number(recordData.working_hours) || 0;
           } else if (recordData.status === 'Present') {
             hoursWorked = 8;
           }
           
           totalHours += hoursWorked;
           
-          const breakHours = recordData.break_time || 0;
+          const breakHours = Number(recordData.break_time) || 0;
           totalBreakHours += breakHours;
           
           const effectiveHours = Math.max(0, hoursWorked - breakHours);
@@ -604,14 +604,14 @@ const WageManagement: React.FC = () => {
           employee_id: employeeData._id,
           employeeIdNumber: employeeData.employee_id,
           employeeName: employeeData.name,
-          totalHours,
-          exceptionHours: totalBreakHours,
-          effectiveHours,
-          dailyWage,
-          calculatedAmount,
-          paidAmount,
-          remainingAmount,
-          payoutAmount: remainingAmount,
+          totalHours: Number(totalHours) || 0,
+          exceptionHours: Number(totalBreakHours) || 0,
+          effectiveHours: Number(effectiveHours) || 0,
+          dailyWage: Number(dailyWage) || 0,
+          calculatedAmount: Number(calculatedAmount) || 0,
+          paidAmount: Number(paidAmount) || 0,
+          remainingAmount: Number(remainingAmount) || 0,
+          payoutAmount: Number(remainingAmount) || 0,
           selected: false
         });
       }
@@ -902,9 +902,9 @@ const WageManagement: React.FC = () => {
                                   </Typography>
                                 </Box>
                               </TableCell>
-                              <TableCell align="right">{result.totalHours.toFixed(2)}</TableCell>
-                              <TableCell align="right">{result.exceptionHours.toFixed(2)}</TableCell>
-                              <TableCell align="right">{result.effectiveHours.toFixed(2)}</TableCell>
+                              <TableCell align="right">{Number(result.totalHours || 0).toFixed(2)}</TableCell>
+                              <TableCell align="right">{Number(result.exceptionHours || 0).toFixed(2)}</TableCell>
+                              <TableCell align="right">{Number(result.effectiveHours || 0).toFixed(2)}</TableCell>
                               <TableCell align="right">{formatCurrency(result.dailyWage)}</TableCell>
                               <TableCell align="right">
                                 <Typography variant="body2" fontWeight="bold" color="primary">
@@ -1162,7 +1162,7 @@ const WageManagement: React.FC = () => {
                                 </Box>
                               </TableCell>
                               <TableCell align="right">{formatCurrency(result.totalEarned)}</TableCell>
-                              <TableCell align="right">{result.bonusRate.toFixed(2)}%</TableCell>
+                              <TableCell align="right">{Number(result.bonusRate || 0).toFixed(2)}%</TableCell>
                               <TableCell align="right">
                                 <Typography variant="body2" fontWeight="bold" color="success.main">
                                   {formatCurrency(result.bonusAmount)}
@@ -1298,14 +1298,14 @@ const WageManagement: React.FC = () => {
                       </TableCell>
                       <TableCell align="right">
                         <Chip 
-                          label={emp.totalHours.toFixed(1)} 
+                          label={Number(emp.totalHours || 0).toFixed(1)} 
                           size="small" 
                           sx={{ minWidth: 60 }}
                         />
                       </TableCell>
                       <TableCell align="right">
                         <Chip 
-                          label={emp.exceptionHours.toFixed(1)} 
+                          label={Number(emp.exceptionHours || 0).toFixed(1)} 
                           size="small" 
                           color="warning"
                           sx={{ minWidth: 60 }}
