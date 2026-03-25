@@ -534,12 +534,9 @@ class DatabaseService {
     employeeId: string,
     newStatus: 'active' | 'resigned' | 'terminated' | 'retired' | 'on_leave',
     eventDate: Date,
-    effectiveDate: Date,
     reason: string,
     processedBy: string,
     lastWorkingDay?: Date,
-    noticePeriodServed?: boolean,
-    exitInterviewNotes?: string,
     notes?: string
   ): Promise<{ success: boolean; employmentHistory: EmploymentHistory; updatedEmployee: Employee }> {
     try {
@@ -566,11 +563,8 @@ class DatabaseService {
         previous_status: previousStatus,
         new_status: newStatus,
         event_date: eventDate,
-        effective_date: effectiveDate,
         reason,
         last_working_day: lastWorkingDay,
-        notice_period_served: noticePeriodServed,
-        exit_interview_notes: exitInterviewNotes,
         notes,
         processed_by: processedBy,
         created_date: new Date()
@@ -587,7 +581,7 @@ class DatabaseService {
 
       // If employee is leaving, set termination details
       if (newStatus !== 'active') {
-        updateData.termination_date = lastWorkingDay || effectiveDate;
+        updateData.termination_date = lastWorkingDay || eventDate;
         updateData.termination_reason = reason;
       }
 

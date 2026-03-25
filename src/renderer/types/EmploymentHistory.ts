@@ -10,12 +10,9 @@ export interface EmploymentHistory {
   previous_status?: string;
   new_status: string;
   event_date: Date;                 // When the event occurred
-  effective_date: Date;             // When it becomes effective (can be different)
   reason?: string;                  // Reason for the change
   last_working_day?: Date;          // For resignations/terminations
-  notice_period_served?: boolean;   // For resignations/terminations
-  exit_interview_notes?: string;    // For resignations
-  notes?: string;
+  notes?: string;                   // Additional notes
   processed_by: string;             // HR/Manager who processed
   created_date: Date;
 }
@@ -25,11 +22,8 @@ export interface EmploymentHistoryFormData {
   event_type: 'resigned' | 'terminated' | 'retired';
   new_status: string;
   event_date: string;
-  effective_date: string;
   reason: string;
   last_working_day?: string;
-  notice_period_served?: boolean;
-  exit_interview_notes?: string;
   notes?: string;
   processed_by: string;
 }
@@ -43,11 +37,8 @@ export class EmploymentHistoryModel implements EmploymentHistory {
   previous_status?: string;
   new_status: string;
   event_date: Date;
-  effective_date: Date;
   reason?: string;
   last_working_day?: Date;
-  notice_period_served?: boolean;
-  exit_interview_notes?: string;
   notes?: string;
   processed_by: string;
   created_date: Date;
@@ -61,11 +52,8 @@ export class EmploymentHistoryModel implements EmploymentHistory {
     this.previous_status = data.previous_status;
     this.new_status = data.new_status || '';
     this.event_date = data.event_date || new Date();
-    this.effective_date = data.effective_date || new Date();
     this.reason = data.reason;
     this.last_working_day = data.last_working_day;
-    this.notice_period_served = data.notice_period_served;
-    this.exit_interview_notes = data.exit_interview_notes;
     this.notes = data.notes;
     this.processed_by = data.processed_by || '';
     this.created_date = data.created_date || new Date();
@@ -99,7 +87,6 @@ export class EmploymentHistoryModel implements EmploymentHistory {
     return {
       ...this,
       event_date: this.event_date.toISOString(),
-      effective_date: this.effective_date.toISOString(),
       last_working_day: this.last_working_day?.toISOString(),
       created_date: this.created_date.toISOString()
     };
@@ -111,7 +98,6 @@ export class EmploymentHistoryModel implements EmploymentHistory {
       ...doc,
       _id: doc._id?.toString(),
       event_date: new Date(doc.event_date),
-      effective_date: new Date(doc.effective_date),
       last_working_day: doc.last_working_day ? new Date(doc.last_working_day) : undefined,
       created_date: new Date(doc.created_date)
     });
@@ -140,15 +126,10 @@ export type EmploymentStatus = typeof EMPLOYMENT_STATUSES[number];
 
 // Termination reasons (for dropdown)
 export const TERMINATION_REASONS = [
-  'Voluntary Resignation',
   'Better Opportunity',
-  'Personal Reasons',
-  'Relocation',
-  'Health Issues',
   'Performance Issues',
-  'Misconduct',
-  'Redundancy',
-  'Contract End',
+  'Personal Reasons',
+  'Health Issues',
   'Retirement',
   'Other'
 ] as const;

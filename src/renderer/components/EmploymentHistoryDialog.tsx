@@ -257,9 +257,6 @@ const EmploymentHistoryDialog: React.FC<EmploymentHistoryDialogProps> = ({
 
                           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                             <strong>Date:</strong> {new Date(record.event_date).toLocaleDateString()}
-                            {record.effective_date && record.effective_date !== record.event_date && (
-                              <> | <strong>Effective:</strong> {new Date(record.effective_date).toLocaleDateString()}</>
-                            )}
                           </Typography>
 
                           {record.previous_status && (
@@ -283,23 +280,6 @@ const EmploymentHistoryDialog: React.FC<EmploymentHistoryDialogProps> = ({
                             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                               <strong>Last Working Day:</strong> {new Date(record.last_working_day).toLocaleDateString()}
                             </Typography>
-                          )}
-
-                          {record.notice_period_served !== undefined && (
-                            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                              <strong>Notice Period:</strong> {record.notice_period_served ? 'Served' : 'Not Served'}
-                            </Typography>
-                          )}
-
-                          {record.exit_interview_notes && (
-                            <Box sx={{ mb: 1, p: 1, backgroundColor: '#f5f5f5', borderRadius: 1 }}>
-                              <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                                Exit Interview Notes:
-                              </Typography>
-                              <Typography variant="body2" sx={{ mt: 0.5 }}>
-                                {record.exit_interview_notes}
-                              </Typography>
-                            </Box>
                           )}
 
                           {record.notes && (

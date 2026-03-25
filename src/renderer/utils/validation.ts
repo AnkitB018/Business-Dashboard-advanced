@@ -372,7 +372,6 @@ export const validateEmploymentStatusChange = (data: any): ValidationErrors => {
   validator
     .required(data.new_status, 'new_status', 'New status is required')
     .required(data.event_date, 'event_date', 'Event date is required')
-    .required(data.effective_date, 'effective_date', 'Effective date is required')
     .required(data.processed_by, 'processed_by', 'Processor name is required');
 
   // Require reason for resignations, terminations, and retirements

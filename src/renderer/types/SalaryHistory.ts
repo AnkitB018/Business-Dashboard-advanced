@@ -107,13 +107,9 @@ export class SalaryHistoryModel implements SalaryHistory {
 
 // Salary change reasons (for dropdown)
 export const SALARY_CHANGE_REASONS = [
-  'Annual Increment',
-  'Promotion',
-  'Performance Bonus',
-  'Market Adjustment',
-  'Cost of Living Adjustment',
+  'Increment without Promotion',
+  'Increment with Promotion',
   'Special Recognition',
-  'Contract Renewal',
   'Other'
 ] as const;
 

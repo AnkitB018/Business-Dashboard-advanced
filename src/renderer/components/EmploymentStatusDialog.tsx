@@ -46,11 +46,8 @@ const EmploymentStatusDialog: React.FC<EmploymentStatusDialogProps> = ({
     event_type: 'resigned',
     new_status: 'resigned',
     event_date: new Date().toISOString().split('T')[0],
-    effective_date: new Date().toISOString().split('T')[0],
     reason: '',
     last_working_day: new Date().toISOString().split('T')[0],
-    notice_period_served: true,
-    exit_interview_notes: '',
     notes: '',
     processed_by: ''
   });
@@ -64,11 +61,8 @@ const EmploymentStatusDialog: React.FC<EmploymentStatusDialogProps> = ({
         event_type: 'resigned',
         new_status: 'resigned',
         event_date: new Date().toISOString().split('T')[0],
-        effective_date: new Date().toISOString().split('T')[0],
         reason: '',
         last_working_day: new Date().toISOString().split('T')[0],
-        notice_period_served: true,
-        exit_interview_notes: '',
         notes: '',
         processed_by: ''
       });
@@ -122,12 +116,9 @@ const EmploymentStatusDialog: React.FC<EmploymentStatusDialogProps> = ({
         employee._id || '',
         formData.new_status as any,
         new Date(formData.event_date),
-        new Date(formData.effective_date),
         formData.reason,
         formData.processed_by,
         formData.last_working_day ? new Date(formData.last_working_day) : undefined,
-        formData.notice_period_served,
-        formData.exit_interview_notes,
         formData.notes
       );
 
@@ -155,8 +146,6 @@ const EmploymentStatusDialog: React.FC<EmploymentStatusDialogProps> = ({
   if (!employee) return null;
 
   const showLastWorkingDay = ['resigned', 'terminated'].includes(formData.new_status);
-  const showNoticePeriod = formData.new_status === 'resigned';
-  const showExitInterview = ['resigned', 'terminated'].includes(formData.new_status);
 
   return (
     <Dialog
@@ -224,32 +213,18 @@ const EmploymentStatusDialog: React.FC<EmploymentStatusDialogProps> = ({
                 )}
               </FormControl>
 
-              {/* Event Date & Effective Date */}
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                <TextField
-                  fullWidth
-                  type="date"
-                  label="Event Date"
-                  value={formData.event_date}
-                  onChange={handleFormChange('event_date')}
-                  error={!!formErrors.event_date}
-                  helperText={formErrors.event_date || 'When the decision was made'}
-                  required
-                  InputLabelProps={{ shrink: true }}
-                />
-
-                <TextField
-                  fullWidth
-                  type="date"
-                  label="Effective Date"
-                  value={formData.effective_date}
-                  onChange={handleFormChange('effective_date')}
-                  error={!!formErrors.effective_date}
-                  helperText={formErrors.effective_date || 'When it becomes effective'}
-                  required
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Box>
+              {/* Event Date */}
+              <TextField
+                fullWidth
+                type="date"
+                label="Event Date"
+                value={formData.event_date}
+                onChange={handleFormChange('event_date')}
+                error={!!formErrors.event_date}
+                helperText={formErrors.event_date || 'When the decision was made'}
+                required
+                InputLabelProps={{ shrink: true }}
+              />
 
               {/* Last Working Day */}
               {showLastWorkingDay && (
@@ -286,34 +261,6 @@ const EmploymentStatusDialog: React.FC<EmploymentStatusDialogProps> = ({
                   </Typography>
                 )}
               </FormControl>
-
-              {/* Notice Period Served (Resignations only) */}
-              {showNoticePeriod && (
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={formData.notice_period_served || false}
-                      onChange={handleCheckboxChange('notice_period_served')}
-                    />
-                  }
-                  label="Notice period served"
-                />
-              )}
-
-              {/* Exit Interview Notes */}
-              {showExitInterview && (
-                <TextField
-                  fullWidth
-                  multiline
-                  rows={3}
-                  label="Exit Interview Notes"
-                  value={formData.exit_interview_notes}
-                  onChange={handleFormChange('exit_interview_notes')}
-                  error={!!formErrors.exit_interview_notes}
-                  helperText={formErrors.exit_interview_notes || 'Key points from exit interview'}
-                  placeholder="Feedback, concerns, suggestions..."
-                />
-              )}
 
               {/* Processed By */}
               <TextField
