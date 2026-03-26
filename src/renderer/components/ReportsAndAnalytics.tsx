@@ -396,12 +396,26 @@ const ReportsAndAnalytics: React.FC = () => {
 
   const calculateSalaryDistribution = (employees: any[]) => {
     const ranges = [
-      { min: 0, max: 20000, label: '< ₹20K' },
-      { min: 20000, max: 40000, label: '₹20K-40K' },
-      { min: 40000, max: 60000, label: '₹40K-60K' },
-      { min: 60000, max: 80000, label: '₹60K-80K' },
-      { min: 80000, max: 100000, label: '₹80K-100K' },
-      { min: 100000, max: Infinity, label: '> ₹100K' }
+      { min: 0, max: 100, label: '< ₹100' },
+      { min: 100, max: 150, label: '₹100-150' },
+      { min: 150, max: 200, label: '₹150-200' },
+      { min: 200, max: 250, label: '₹200-250' },
+      { min: 250, max: 300, label: '₹250-300' },
+      { min: 300, max: 350, label: '₹300-350' },
+      { min: 350, max: 400, label: '₹350-400' },
+      { min: 400, max: 450, label: '₹400-450' },
+      { min: 450, max: 500, label: '₹450-500' },
+      { min: 500, max: 550, label: '₹500-550' },
+      { min: 550, max: 600, label: '₹550-600' },
+      { min: 600, max: 650, label: '₹600-650' },
+      { min: 650, max: 700, label: '₹650-700' },
+      { min: 700, max: 750, label: '₹700-750' },
+      { min: 750, max: 800, label: '₹750-800' },
+      { min: 800, max: 850, label: '₹800-850' },
+      { min: 850, max: 900, label: '₹850-900' },
+      { min: 900, max: 950, label: '₹900-950' },
+      { min: 950, max: 1000, label: '₹950-1000' },
+      { min: 1000, max: Infinity, label: '> ₹1000' }
     ];
     
     const distribution = ranges.map(range => {
@@ -470,29 +484,11 @@ const ReportsAndAnalytics: React.FC = () => {
   const getRecentChanges = (salaryHistory: any[], employmentHistory: any[], employees: any[]) => {
     const changes: Array<{ employee_name: string; type: string; change: string; date: string }> = [];
     
-    // Add recent salary changes
-    if (Array.isArray(salaryHistory)) {
-      salaryHistory
-        .sort((a: any, b: any) => new Date(b.effective_date).getTime() - new Date(a.effective_date).getTime())
-        .slice(0, 5)
-        .forEach((h: any) => {
-          const employee = employees.find((e: any) => e._id?.toString() === h.employee_id);
-          if (employee) {
-            changes.push({
-              employee_name: employee.name,
-              type: 'Salary Change',
-              change: `₹${h.previous_salary.toLocaleString()} → ₹${h.new_salary.toLocaleString()} (${h.change_percentage > 0 ? '+' : ''}${h.change_percentage.toFixed(1)}%)`,
-              date: new Date(h.effective_date).toLocaleDateString()
-            });
-          }
-        });
-    }
-    
-    // Add recent employment changes
+    // Add only recent employment status changes
     if (Array.isArray(employmentHistory)) {
       employmentHistory
         .sort((a: any, b: any) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime())
-        .slice(0, 5)
+        .slice(0, 10)
         .forEach((h: any) => {
           const employee = employees.find((e: any) => e._id?.toString() === h.employee_id);
           if (employee) {
@@ -506,16 +502,7 @@ const ReportsAndAnalytics: React.FC = () => {
         });
     }
     
-    return changes.sort((a, b) => {
-      try {
-        const dateA = new Date(a.date);
-        const dateB = new Date(b.date);
-        if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) return 0;
-        return dateB.getTime() - dateA.getTime();
-      } catch {
-        return 0;
-      }
-    }).slice(0, 10);
+    return changes;
   };
 
   // Export functionality
@@ -870,8 +857,8 @@ const ReportsAndAnalytics: React.FC = () => {
                 <Avatar sx={{ mx: 'auto', mb: 1, bgcolor: 'warning.main' }}>
                   <AttachMoney />
                 </Avatar>
-                <Typography variant="h4" fontWeight="bold">₹{Math.round(lifecycleMetrics.avgSalary / 1000)}K</Typography>
-                <Typography variant="body2" color="text.secondary">Avg Salary</Typography>
+                <Typography variant="h4" fontWeight="bold">₹{Math.round(lifecycleMetrics.avgSalary)}</Typography>
+                <Typography variant="body2" color="text.secondary">Avg Daily Wage</Typography>
                 <Chip
                   label={`${lifecycleMetrics.salaryGrowthRate > 0 ? '+' : ''}${lifecycleMetrics.salaryGrowthRate.toFixed(1)}% growth`}
                   color={lifecycleMetrics.salaryGrowthRate >= 0 ? 'success' : 'error'}
@@ -958,97 +945,49 @@ const ReportsAndAnalytics: React.FC = () => {
             </Paper>
           </Box>
 
-          {/* Charts Row 2: Department Attrition & Employment Status Distribution */}
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 3, mb: 3 }}>
-            {/* Department Attrition */}
+          {/* Charts Row 2: Recent Employment Changes */}
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr' }, gap: 3, mb: 3 }}>
+            {/* Recent Employment Changes */}
             <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>Department-wise Attrition</Typography>
-              {lifecycleMetrics.departmentAttrition.length > 0 ? (
-                <Box>
-                  <ResponsiveContainer width="100%" height={250}>
-                    <RechartsBarChart 
-                      data={lifecycleMetrics.departmentAttrition} 
-                      layout="vertical"
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis type="number" />
-                      <YAxis dataKey="department" type="category" width={100} />
-                      <RechartsTooltip />
-                      <Legend />
-                      <Bar dataKey="resigned" fill="#ff9800" name="Resigned" />
-                      <Bar dataKey="terminated" fill="#f44336" name="Terminated" />
-                    </RechartsBarChart>
-                  </ResponsiveContainer>
-                  <Divider sx={{ my: 2 }} />
-                  <TableContainer>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell><strong>Department</strong></TableCell>
-                          <TableCell align="right"><strong>Resigned</strong></TableCell>
-                          <TableCell align="right"><strong>Terminated</strong></TableCell>
-                          <TableCell align="right"><strong>Rate</strong></TableCell>
+              <Typography variant="h6" gutterBottom>Recent Employment Changes</Typography>
+              {lifecycleMetrics.recentChanges.length > 0 ? (
+                <TableContainer sx={{ maxHeight: 400 }}>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell><strong>Employee</strong></TableCell>
+                        <TableCell><strong>Type</strong></TableCell>
+                        <TableCell><strong>Change</strong></TableCell>
+                        <TableCell><strong>Date</strong></TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {lifecycleMetrics.recentChanges.map((change, index) => (
+                        <TableRow key={index}>
+                          <TableCell>{change.employee_name}</TableCell>
+                          <TableCell>
+                            <Chip
+                              label={change.type}
+                              size="small"
+                              color={change.type === 'Salary Change' ? 'primary' : 'warning'}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="caption">{change.change}</Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="caption" color="text.secondary">
+                              {change.date}
+                            </Typography>
+                          </TableCell>
                         </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {lifecycleMetrics.departmentAttrition.map((dept) => (
-                          <TableRow key={dept.department}>
-                            <TableCell>{dept.department}</TableCell>
-                            <TableCell align="right">{dept.resigned}</TableCell>
-                            <TableCell align="right">{dept.terminated}</TableCell>
-                            <TableCell align="right">
-                              <Chip
-                                label={`${dept.rate.toFixed(1)}%`}
-                                color={dept.rate > 15 ? 'error' : dept.rate > 10 ? 'warning' : 'success'}
-                                size="small"
-                              />
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </Box>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
               ) : (
-                <Alert severity="info">No attrition data available</Alert>
+                <Alert severity="info">No recent changes</Alert>
               )}
-            </Paper>
-
-            {/* Employment Status Distribution */}
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>Employment Status Distribution</Typography>
-              <ResponsiveContainer width="100%" height={300}>
-                <RechartsPieChart>
-                  <Pie
-                    data={[
-                      { name: 'Active', value: lifecycleMetrics.activeEmployees, color: '#4caf50' },
-                      { name: 'Resigned', value: lifecycleMetrics.resignedEmployees, color: '#ff9800' },
-                      { name: 'Terminated', value: lifecycleMetrics.terminatedEmployees, color: '#f44336' },
-                      { name: 'Retired', value: lifecycleMetrics.retiredEmployees, color: '#2196f3' },
-                      { name: 'On Leave', value: lifecycleMetrics.onLeaveEmployees, color: '#9e9e9e' }
-                    ].filter(item => item.value > 0)}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={(entry) => `${entry.name}: ${entry.value}`}
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {[
-                      { name: 'Active', value: lifecycleMetrics.activeEmployees, color: '#4caf50' },
-                      { name: 'Resigned', value: lifecycleMetrics.resignedEmployees, color: '#ff9800' },
-                      { name: 'Terminated', value: lifecycleMetrics.terminatedEmployees, color: '#f44336' },
-                      { name: 'Retired', value: lifecycleMetrics.retiredEmployees, color: '#2196f3' },
-                      { name: 'On Leave', value: lifecycleMetrics.onLeaveEmployees, color: '#9e9e9e' }
-                    ].filter(item => item.value > 0).map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <RechartsTooltip />
-                  <Legend />
-                </RechartsPieChart>
-              </ResponsiveContainer>
             </Paper>
           </Box>
 
@@ -1106,7 +1045,7 @@ const ReportsAndAnalytics: React.FC = () => {
             </Paper>
           </Box>
 
-          {/* Top Reasons & Recent Changes */}
+          {/* Top Reasons & Employment Status */}
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 3 }}>
             {/* Top Termination Reasons */}
             <Paper sx={{ p: 3 }}>
@@ -1154,47 +1093,41 @@ const ReportsAndAnalytics: React.FC = () => {
               )}
             </Paper>
 
-            {/* Recent Changes */}
+            {/* Employment Status Distribution */}
             <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>Recent Changes</Typography>
-              {lifecycleMetrics.recentChanges.length > 0 ? (
-                <TableContainer sx={{ maxHeight: 300 }}>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell><strong>Employee</strong></TableCell>
-                        <TableCell><strong>Type</strong></TableCell>
-                        <TableCell><strong>Change</strong></TableCell>
-                        <TableCell><strong>Date</strong></TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {lifecycleMetrics.recentChanges.map((change, index) => (
-                        <TableRow key={index}>
-                          <TableCell>{change.employee_name}</TableCell>
-                          <TableCell>
-                            <Chip
-                              label={change.type}
-                              size="small"
-                              color={change.type === 'Salary Change' ? 'primary' : 'warning'}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Typography variant="caption">{change.change}</Typography>
-                          </TableCell>
-                          <TableCell>
-                            <Typography variant="caption" color="text.secondary">
-                              {change.date}
-                            </Typography>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              ) : (
-                <Alert severity="info">No recent changes</Alert>
-              )}
+              <Typography variant="h6" gutterBottom>Employment Status Distribution</Typography>
+              <ResponsiveContainer width="100%" height={300}>
+                <RechartsPieChart>
+                  <Pie
+                    data={[
+                      { name: 'Active', value: lifecycleMetrics.activeEmployees, color: '#4caf50' },
+                      { name: 'Resigned', value: lifecycleMetrics.resignedEmployees, color: '#ff9800' },
+                      { name: 'Terminated', value: lifecycleMetrics.terminatedEmployees, color: '#f44336' },
+                      { name: 'Retired', value: lifecycleMetrics.retiredEmployees, color: '#2196f3' },
+                      { name: 'On Leave', value: lifecycleMetrics.onLeaveEmployees, color: '#9e9e9e' }
+                    ].filter(item => item.value > 0)}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={(entry) => `${entry.name}: ${entry.value}`}
+                    outerRadius={100}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {[
+                      { name: 'Active', value: lifecycleMetrics.activeEmployees, color: '#4caf50' },
+                      { name: 'Resigned', value: lifecycleMetrics.resignedEmployees, color: '#ff9800' },
+                      { name: 'Terminated', value: lifecycleMetrics.terminatedEmployees, color: '#f44336' },
+                      { name: 'Retired', value: lifecycleMetrics.retiredEmployees, color: '#2196f3' },
+                      { name: 'On Leave', value: lifecycleMetrics.onLeaveEmployees, color: '#9e9e9e' }
+                    ].filter(item => item.value > 0).map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip />
+                  <Legend />
+                </RechartsPieChart>
+              </ResponsiveContainer>
             </Paper>
           </Box>
         </Box>
