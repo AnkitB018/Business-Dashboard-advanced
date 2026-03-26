@@ -77,6 +77,14 @@ interface EmployeeLifecycleMetrics {
   recentChanges: Array<{ employee_name: string; type: string; change: string; date: string }>;
 }
 
+// Helper function to format date as YYYY-MM-DD in local timezone
+const formatLocalDate = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const ReportsAndAnalytics: React.FC = () => {
   const [tabValue, setTabValue] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -92,11 +100,30 @@ const ReportsAndAnalytics: React.FC = () => {
   }>>([]);
   const [attendanceTimeRange, setAttendanceTimeRange] = useState('thisMonth');
   const [attendanceStartDate, setAttendanceStartDate] = useState(
-    new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]
+    formatLocalDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
   );
   const [attendanceEndDate, setAttendanceEndDate] = useState(
-    new Date().toISOString().split('T')[0]
+    formatLocalDate(new Date())
   );
+
+  // Wage & Payout Reports State
+  const [payoutTimeRange, setPayoutTimeRange] = useState('thisMonth');
+  const [payoutStartDate, setPayoutStartDate] = useState(
+    formatLocalDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
+  );
+  const [payoutEndDate, setPayoutEndDate] = useState(
+    formatLocalDate(new Date())
+  );
+  const [payoutData, setPayoutData] = useState<Array<any>>([]);
+  const [payoutSummary, setPayoutSummary] = useState({
+    totalPayouts: 0,
+    totalWages: 0,
+    totalBonuses: 0,
+    employeesPaid: 0,
+    avgPayoutPerEmployee: 0,
+    totalHoursPaid: 0,
+    employeeWisePayouts: [] as Array<{ employee_name: string; total_payout: number; wage_amount: number; bonus_amount: number; payout_count: number }>
+  });
 
   const [lifecycleMetrics, setLifecycleMetrics] = useState<EmployeeLifecycleMetrics>({
     totalEmployees: 0,
@@ -136,6 +163,12 @@ const ReportsAndAnalytics: React.FC = () => {
       loadAttendanceReportData();
     }
   }, [tabValue, attendanceStartDate, attendanceEndDate]);
+
+  useEffect(() => {
+    if (tabValue === 2) {
+      loadPayoutReportData();
+    }
+  }, [tabValue, payoutStartDate, payoutEndDate]);
 
   const loadAttendanceReportData = async () => {
     setLoading(true);
@@ -190,12 +223,14 @@ const ReportsAndAnalytics: React.FC = () => {
 
   const handleAttendanceDateRangeChange = (range: string) => {
     const today = new Date();
-    let startDate = new Date();
-    let endDate = new Date();
+    let startDate: Date;
+    let endDate: Date;
 
     switch (range) {
       case 'thisWeek':
-        startDate = new Date(today.setDate(today.getDate() - today.getDay()));
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - today.getDay());
+        startDate = startOfWeek;
         endDate = new Date();
         break;
       case 'thisMonth':
@@ -203,20 +238,144 @@ const ReportsAndAnalytics: React.FC = () => {
         endDate = new Date();
         break;
       case 'last3Months':
-        startDate = new Date(today.getFullYear(), today.getMonth() - 3, 1);
+        // Go back 2 months to get 3 months total (including current month)
+        startDate = new Date(today.getFullYear(), today.getMonth() - 2, 1);
         endDate = new Date();
         break;
       case 'thisYear':
-        startDate = new Date(today.getFullYear(), 0,  1);
+        startDate = new Date(today.getFullYear(), 0, 1);
         endDate = new Date();
         break;
       case 'custom':
         return; // Don't auto-set dates for custom range
+      default:
+        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+        endDate = new Date();
     }
 
     setAttendanceTimeRange(range);
-    setAttendanceStartDate(startDate.toISOString().split('T')[0]);
-    setAttendanceEndDate(endDate.toISOString().split('T')[0]);
+    setAttendanceStartDate(formatLocalDate(startDate));
+    setAttendanceEndDate(formatLocalDate(endDate));
+  };
+
+  const loadPayoutReportData = async () => {
+    setLoading(true);
+    try {
+      const [employees, payouts] = await Promise.all([
+        databaseService.getAllEmployees(),
+        databaseService.getAllPayouts()
+      ]);
+
+      // Filter payouts by date range
+      const filteredPayouts = payouts.filter((payout: any) => {
+        const payoutDate = payout.payout_date;
+        return payoutDate >= payoutStartDate && payoutDate <= payoutEndDate;
+      });
+
+      // Calculate summary statistics
+      const totalPayouts = filteredPayouts.reduce((sum: number, p: any) => sum + (Number(p.actual_amount) || 0), 0);
+      const totalWages = filteredPayouts
+        .filter((p: any) => p.payout_type === 'wage')
+        .reduce((sum: number, p: any) => sum + (Number(p.actual_amount) || 0), 0);
+      const totalBonuses = filteredPayouts
+        .filter((p: any) => p.payout_type === 'bonus')
+        .reduce((sum: number, p: any) => sum + (Number(p.actual_amount) || 0), 0);
+      
+      const uniqueEmployees = new Set(filteredPayouts.map((p: any) => p.employee_id));
+      const employeesPaid = uniqueEmployees.size;
+      const avgPayoutPerEmployee = employeesPaid > 0 ? totalPayouts / employeesPaid : 0;
+      
+      const totalHoursPaid = filteredPayouts.reduce((sum: number, p: any) => sum + (Number(p.effective_hours) || 0), 0);
+
+      // Calculate employee-wise payouts
+      const employeePayoutMap = new Map();
+      filteredPayouts.forEach((payout: any) => {
+        const empId = payout.employee_id;
+        if (!employeePayoutMap.has(empId)) {
+          employeePayoutMap.set(empId, {
+            employee_name: payout.employee_name,
+            total_payout: 0,
+            wage_amount: 0,
+            bonus_amount: 0,
+            payout_count: 0
+          });
+        }
+        const empData = employeePayoutMap.get(empId);
+        empData.total_payout += Number(payout.actual_amount) || 0;
+        if (payout.payout_type === 'wage') {
+          empData.wage_amount += Number(payout.actual_amount) || 0;
+        } else {
+          empData.bonus_amount += Number(payout.actual_amount) || 0;
+        }
+        empData.payout_count += 1;
+      });
+
+      const employeeWisePayouts = Array.from(employeePayoutMap.values())
+        .sort((a, b) => b.total_payout - a.total_payout);
+
+      setPayoutSummary({
+        totalPayouts,
+        totalWages,
+        totalBonuses,
+        employeesPaid,
+        avgPayoutPerEmployee,
+        totalHoursPaid,
+        employeeWisePayouts
+      });
+
+      // Sort payouts by date descending
+      setPayoutData(filteredPayouts.sort((a: any, b: any) => 
+        new Date(b.payout_date).getTime() - new Date(a.payout_date).getTime()
+      ));
+
+    } catch (error) {
+      console.error('Error loading payout report data:', error);
+      showSnackbar('Failed to load payout report data', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePayoutDateRangeChange = (range: string) => {
+    const today = new Date();
+    let startDate: Date;
+    let endDate: Date;
+
+    switch (range) {
+      case 'thisWeek':
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - today.getDay());
+        startDate = startOfWeek;
+        endDate = new Date();
+        break;
+      case 'thisMonth':
+        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+        endDate = new Date();
+        break;
+      case 'last3Months':
+        // Go back 2 months to get 3 months total (including current month)
+        startDate = new Date(today.getFullYear(), today.getMonth() - 2, 1);
+        endDate = new Date();
+        break;
+      case 'last6Months':
+        // Go back 5 months to get 6 months total (including current month)
+        startDate = new Date(today.getFullYear(), today.getMonth() - 5, 1);
+        endDate = new Date();
+        break;
+      case 'thisYear':
+        startDate = new Date(today.getFullYear(), 0, 1);
+        endDate = new Date();
+        break;
+      case 'custom':
+        return; // Don't auto-set dates for custom range
+      default:
+        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+        endDate = new Date();
+    }
+
+    setPayoutTimeRange(range);
+    setPayoutStartDate(formatLocalDate(startDate));
+    setPayoutEndDate(formatLocalDate(endDate));
   };
 
   const loadEmployeeLifecycleMetrics = async () => {
@@ -1136,14 +1295,290 @@ const ReportsAndAnalytics: React.FC = () => {
       {/* Wage & Payout Reports Tab */}
       {tabValue === 2 && (
         <Box>
-          <Typography variant="h5" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
-            <AttachMoney color="primary" />
-            Wage & Payout Reports
-          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Typography variant="h5" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <AttachMoney color="primary" />
+              Wage & Payout Reports
+            </Typography>
 
-          <Alert severity="info" sx={{ mb: 3 }}>
-            Wage & Payout Reports - Coming Soon
-          </Alert>
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+              <FormControl size="small" sx={{ minWidth: 150 }}>
+                <InputLabel>Time Period</InputLabel>
+                <Select
+                  value={payoutTimeRange}
+                  onChange={(e) => handlePayoutDateRangeChange(e.target.value)}
+                  label="Time Period"
+                >
+                  <MenuItem value="thisWeek">This Week</MenuItem>
+                  <MenuItem value="thisMonth">This Month</MenuItem>
+                  <MenuItem value="last3Months">Last 3 Months</MenuItem>
+                  <MenuItem value="last6Months">Last 6 Months</MenuItem>
+                  <MenuItem value="thisYear">This Year</MenuItem>
+                  <MenuItem value="custom">Custom Period</MenuItem>
+                </Select>
+              </FormControl>
+
+              {payoutTimeRange === 'custom' && (
+                <>
+                  <TextField
+                    type="date"
+                    label="Start Date"
+                    value={payoutStartDate}
+                    onChange={(e) => setPayoutStartDate(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    size="small"
+                  />
+                  <TextField
+                    type="date"
+                    label="End Date"
+                    value={payoutEndDate}
+                    onChange={(e) => setPayoutEndDate(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    size="small"
+                  />
+                </>
+              )}
+            </Box>
+          </Box>
+
+          {/* Summary Statistics Cards */}
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2, mb: 3 }}>
+            <Card>
+              <CardContent sx={{ textAlign: 'center' }}>
+                <Avatar sx={{ mx: 'auto', mb: 1, bgcolor: 'success.main' }}>
+                  <AttachMoney />
+                </Avatar>
+                <Typography variant="h4" fontWeight="bold">
+                  ₹{payoutSummary.totalPayouts.toFixed(0)}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">Total Payouts</Typography>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent sx={{ textAlign: 'center' }}>
+                <Avatar sx={{ mx: 'auto', mb: 1, bgcolor: 'primary.main' }}>
+                  <Assessment />
+                </Avatar>
+                <Typography variant="h4" fontWeight="bold">
+                  ₹{payoutSummary.totalWages.toFixed(0)}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">Total Wages</Typography>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent sx={{ textAlign: 'center' }}>
+                <Avatar sx={{ mx: 'auto', mb: 1, bgcolor: 'warning.main' }}>
+                  <TrendingUp />
+                </Avatar>
+                <Typography variant="h4" fontWeight="bold">
+                  ₹{payoutSummary.totalBonuses.toFixed(0)}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">Total Bonuses</Typography>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent sx={{ textAlign: 'center' }}>
+                <Avatar sx={{ mx: 'auto', mb: 1, bgcolor: 'info.main' }}>
+                  <People />
+                </Avatar>
+                <Typography variant="h4" fontWeight="bold">
+                  {payoutSummary.employeesPaid}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">Employees Paid</Typography>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent sx={{ textAlign: 'center' }}>
+                <Avatar sx={{ mx: 'auto', mb: 1, bgcolor: 'secondary.main' }}>
+                  <BarChart />
+                </Avatar>
+                <Typography variant="h4" fontWeight="bold">
+                  ₹{payoutSummary.avgPayoutPerEmployee.toFixed(0)}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">Avg Per Employee</Typography>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent sx={{ textAlign: 'center' }}>
+                <Avatar sx={{ mx: 'auto', mb: 1, bgcolor: 'error.main' }}>
+                  <CalendarToday />
+                </Avatar>
+                <Typography variant="h4" fontWeight="bold">
+                  {payoutSummary.totalHoursPaid.toFixed(0)}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">Total Hours Paid</Typography>
+              </CardContent>
+            </Card>
+          </Box>
+
+          {/* Employee-wise Total Payouts - Bar Chart */}
+          <Paper sx={{ p: 3, mb: 3 }}>
+            <Typography variant="h6" gutterBottom>Employee-wise Total Payouts</Typography>
+            {payoutSummary.employeeWisePayouts.length > 0 ? (
+              <ResponsiveContainer width="100%" height={400}>
+                <RechartsBarChart data={payoutSummary.employeeWisePayouts} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis type="number" />
+                  <YAxis dataKey="employee_name" type="category" width={120} />
+                  <RechartsTooltip formatter={(value) => `₹${Number(value).toFixed(2)}`} />
+                  <Legend />
+                  <Bar dataKey="wage_amount" fill="#4caf50" name="Wages" stackId="a" />
+                  <Bar dataKey="bonus_amount" fill="#ff9800" name="Bonuses" stackId="a" />
+                </RechartsBarChart>
+              </ResponsiveContainer>
+            ) : (
+              <Alert severity="info">No payout data available for the selected period</Alert>
+            )}
+          </Paper>
+
+          {/* Payout Type Breakdown */}
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 3, mb: 3 }}>
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom>Payout Type Distribution</Typography>
+              <ResponsiveContainer width="100%" height={300}>
+                <RechartsPieChart>
+                  <Pie
+                    data={[
+                      { name: 'Wages', value: payoutSummary.totalWages, color: '#4caf50' },
+                      { name: 'Bonuses', value: payoutSummary.totalBonuses, color: '#ff9800' }
+                    ].filter(item => item.value > 0)}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={(entry) => `${entry.name}: ₹${Number(entry.value).toFixed(0)}`}
+                    outerRadius={100}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {[
+                      { name: 'Wages', value: payoutSummary.totalWages, color: '#4caf50' },
+                      { name: 'Bonuses', value: payoutSummary.totalBonuses, color: '#ff9800' }
+                    ].filter(item => item.value > 0).map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip formatter={(value) => `₹${Number(value).toFixed(2)}`} />
+                  <Legend />
+                </RechartsPieChart>
+              </ResponsiveContainer>
+            </Paper>
+
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom>Employee Summary</Typography>
+              <TableContainer sx={{ maxHeight: 300 }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell><strong>Employee</strong></TableCell>
+                      <TableCell align="right"><strong>Payouts</strong></TableCell>
+                      <TableCell align="right"><strong>Total</strong></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {payoutSummary.employeeWisePayouts.slice(0, 5).map((emp) => (
+                      <TableRow key={emp.employee_name}>
+                        <TableCell>{emp.employee_name}</TableCell>
+                        <TableCell align="right">
+                          <Chip label={emp.payout_count} size="small" color="primary" />
+                        </TableCell>
+                        <TableCell align="right">
+                          <Typography variant="body2" fontWeight="bold" color="success.main">
+                            ₹{emp.total_payout.toFixed(2)}
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              {payoutSummary.employeeWisePayouts.length > 5 && (
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                  Showing top 5 of {payoutSummary.employeeWisePayouts.length} employees
+                </Typography>
+              )}
+            </Paper>
+          </Box>
+
+          {/* Detailed Payout List */}
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>All Payouts for Selected Period</Typography>
+            {payoutData.length > 0 ? (
+              <TableContainer sx={{ maxHeight: 500 }}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell><strong>Date</strong></TableCell>
+                      <TableCell><strong>Employee</strong></TableCell>
+                      <TableCell><strong>Type</strong></TableCell>
+                      <TableCell><strong>Period</strong></TableCell>
+                      <TableCell align="right"><strong>Hours</strong></TableCell>
+                      <TableCell align="right"><strong>Daily Wage</strong></TableCell>
+                      <TableCell align="right"><strong>Calculated</strong></TableCell>
+                      <TableCell align="right"><strong>Actual Paid</strong></TableCell>
+                      <TableCell><strong>Notes</strong></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {payoutData.map((payout, index) => (
+                      <TableRow key={index}>
+                        <TableCell>{new Date(payout.payout_date).toLocaleDateString()}</TableCell>
+                        <TableCell>{payout.employee_name}</TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={payout.payout_type === 'wage' ? 'Wage' : 'Bonus'}
+                            size="small"
+                            color={payout.payout_type === 'wage' ? 'primary' : 'warning'}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="caption">
+                            {new Date(payout.period_start).toLocaleDateString()} - {new Date(payout.period_end).toLocaleDateString()}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="right">
+                          {payout.effective_hours ? payout.effective_hours.toFixed(2) : '-'}
+                        </TableCell>
+                        <TableCell align="right">
+                          {payout.daily_wage ? `₹${payout.daily_wage}` : '-'}
+                        </TableCell>
+                        <TableCell align="right">
+                          ₹{Number(payout.calculated_amount || 0).toFixed(2)}
+                        </TableCell>
+                        <TableCell align="right">
+                          <Typography variant="body2" fontWeight="bold" color="success.main">
+                            ₹{Number(payout.actual_amount || 0).toFixed(2)}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="caption" color="text.secondary">
+                            {payout.notes || '-'}
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            ) : (
+              <Alert severity="info">No payouts found for the selected period</Alert>
+            )}
+            
+            {payoutData.length > 0 && (
+              <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="body2" color="text.secondary">
+                  Total Records: {payoutData.length}
+                </Typography>
+                <Typography variant="body1" fontWeight="bold">
+                  Grand Total: ₹{payoutSummary.totalPayouts.toFixed(2)}
+                </Typography>
+              </Box>
+            )}
+          </Paper>
         </Box>
       )}
 
