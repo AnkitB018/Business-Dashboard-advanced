@@ -1,17 +1,10 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Paper,
   Typography,
   Card,
   CardContent,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  TextField,
-  Button,
-  Grid,
   Avatar,
   Divider,
   Table,
@@ -27,35 +20,27 @@ import {
   Snackbar,
   IconButton,
   Tooltip,
+  Button,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  TextField,
 } from '@mui/material';
 import {
   TrendingUp,
   TrendingDown,
   AttachMoney,
   People,
-  ShoppingCart,
-  Assignment,
   CalendarToday,
-  Business,
   Assessment,
   FileDownload,
-  DateRange,
-  Analytics,
-  BarChart,
-  PieChart,
-  Timeline,
-  CalendarMonth,
-  NavigateBefore,
-  NavigateNext,
-  GetApp,
-  PersonAdd,
   PersonOff,
   WorkHistory,
-  AccountBalance,
+  Analytics,
+  BarChart,
 } from '@mui/icons-material';
 import {
-  LineChart,
-  Line,
   AreaChart,
   Area,
   BarChart as RechartsBarChart,
@@ -70,33 +55,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { formatCurrency } from '../utils/formatters';
 import databaseService from '../services/DatabaseService';
-
-interface ReportFilters {
-  dateRange: string;
-  startDate: string;
-  endDate: string;
-  reportType: string;
-  department: string;
-}
-
-interface AttendanceMetrics {
-  totalEmployees: number;
-  presentToday: number;
-  absentToday: number;
-  lateArrivals: number;
-  averageWorkingHours: number;
-  departmentAttendance: Array<{ department: string; present: number; total: number }>;
-}
-
-interface FinancialMetrics {
-  totalRevenue: number;
-  totalExpenses: number;
-  netProfit: number;
-  profitMargin: number;
-  cashFlow: Array<{ month: string; income: number; expenses: number; profit: number }>;
-}
 
 interface EmployeeLifecycleMetrics {
   totalEmployees: number;
@@ -121,30 +80,23 @@ interface EmployeeLifecycleMetrics {
 const ReportsAndAnalytics: React.FC = () => {
   const [tabValue, setTabValue] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [filters, setFilters] = useState<ReportFilters>({
-    dateRange: 'thisMonth',
-    startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0],
-    reportType: 'all',
-    department: 'all'
-  });
 
-  const [attendanceMetrics, setAttendanceMetrics] = useState<AttendanceMetrics>({
-    totalEmployees: 0,
-    presentToday: 0,
-    absentToday: 0,
-    lateArrivals: 0,
-    averageWorkingHours: 0,
-    departmentAttendance: []
-  });
-
-  const [financialMetrics, setFinancialMetrics] = useState<FinancialMetrics>({
-    totalRevenue: 0,
-    totalExpenses: 0,
-    netProfit: 0,
-    profitMargin: 0,
-    cashFlow: []
-  });
+  // Attendance Reports State
+  const [attendanceReportData, setAttendanceReportData] = useState<Array<{
+    employee_name: string;
+    total_hours: number;
+    break_hours: number;
+    effective_hours: number;
+    present_days: number;
+    absent_days: number;
+  }>>([]);
+  const [attendanceTimeRange, setAttendanceTimeRange] = useState('thisMonth');
+  const [attendanceStartDate, setAttendanceStartDate] = useState(
+    new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]
+  );
+  const [attendanceEndDate, setAttendanceEndDate] = useState(
+    new Date().toISOString().split('T')[0]
+  );
 
   const [lifecycleMetrics, setLifecycleMetrics] = useState<EmployeeLifecycleMetrics>({
     totalEmployees: 0,
@@ -165,11 +117,6 @@ const ReportsAndAnalytics: React.FC = () => {
     topReasons: [],
     recentChanges: []
   });
-
-  // Calendar state for attendance view
-  const [calendarDate, setCalendarDate] = useState(new Date());
-  const [selectedEmployee, setSelectedEmployee] = useState('all');
-  const [calendarData, setCalendarData] = useState<any[]>([]);
   
   // Chart colors for data visualization
   const chartColors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#ff0000', '#00ff00', '#0000ff'];
@@ -181,125 +128,99 @@ const ReportsAndAnalytics: React.FC = () => {
   });
 
   useEffect(() => {
-    loadReportsData();
-  }, [filters]);
+    loadEmployeeLifecycleMetrics();
+  }, []);
 
-  const loadReportsData = async () => {
+  useEffect(() => {
+    if (tabValue === 0) {
+      loadAttendanceReportData();
+    }
+  }, [tabValue, attendanceStartDate, attendanceEndDate]);
+
+  const loadAttendanceReportData = async () => {
     setLoading(true);
     try {
-      // Load real data from database
-      const [attendanceData, employeeData] = await Promise.all([
-        databaseService.getAllAttendance(),
-        databaseService.getAllEmployees()
+      const [employees, attendance] = await Promise.all([
+        databaseService.getAllEmployees(),
+        databaseService.getAllAttendance()
       ]);
 
-      // Calculate attendance metrics from real data
-      const today = new Date().toDateString();
-      const todaysAttendance = attendanceData.filter(record => {
-        try {
-          const recordDate = new Date(record.date);
-          if (isNaN(recordDate.getTime())) return false;
-          return recordDate.toDateString() === today;
-        } catch {
-          return false;
-        }
-      });
-      const presentToday = todaysAttendance.filter(record => record.status === 'Present').length;
-      const totalEmployees = employeeData.length;
-
-      // Calculate department attendance
-      const departmentAttendance = calculateDepartmentAttendance(employeeData, todaysAttendance);
-
-      setAttendanceMetrics({
-        totalEmployees,
-        presentToday,
-        absentToday: totalEmployees - presentToday,
-        lateArrivals: 0,
-        averageWorkingHours: 8.0,
-        departmentAttendance
+      // Filter attendance by date range
+      const filteredAttendance = attendance.filter((record: any) => {
+        const recordDate = record.date;
+        return recordDate >= attendanceStartDate && recordDate <= attendanceEndDate;
       });
 
-      // Set simple financial metrics
-      setFinancialMetrics({
-        totalRevenue: 0,
-        totalExpenses: 0,
-        netProfit: 0,
-        profitMargin: 0,
-        cashFlow: []
+      // Calculate metrics for each employee
+      const employeeMetrics = employees.map((employee: any) => {
+        const employeeRecords = filteredAttendance.filter((r: any) => r.employee_id === employee._id);
+        
+        const presentRecords = employeeRecords.filter((r: any) => r.status === 'Present');
+        const absentRecords = employeeRecords.filter((r: any) => r.status === 'Absent');
+
+        const totalHours = presentRecords.reduce((sum: number, r: any) => {
+          return sum + (Number(r.working_hours) || 0);
+        }, 0);
+
+        const breakHours = presentRecords.reduce((sum: number, r: any) => {
+          return sum + (Number(r.break_time) || 0);
+        }, 0);
+
+        return {
+          employee_name: employee.name,
+          total_hours: Number(totalHours.toFixed(2)),
+          break_hours: Number(breakHours.toFixed(2)),
+          effective_hours: Number((totalHours - breakHours).toFixed(2)),
+          present_days: presentRecords.length,
+          absent_days: absentRecords.length
+        };
       });
 
-      // Load Employee Lifecycle Metrics
-      await loadEmployeeLifecycleMetrics();
+      // Sort by total hours descending
+      employeeMetrics.sort((a, b) => b.total_hours - a.total_hours);
 
-      showSnackbar('Reports data loaded successfully', 'success');
+      setAttendanceReportData(employeeMetrics);
     } catch (error) {
-      console.error('Error loading reports data:', error);
-      showSnackbar('Failed to load reports data', 'error');
+      console.error('Error loading attendance report data:', error);
+      showSnackbar('Failed to load attendance report data', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  // Load calendar data for the selected month
-  const loadCalendarData = async () => {
-    try {
-      // Get all attendance records for the current calendar month
-      const year = calendarDate.getFullYear();
-      const month = calendarDate.getMonth();
-      const firstDay = new Date(year, month, 1);
-      const lastDay = new Date(year, month + 1, 0);
-      
-      const allAttendance = await databaseService.getAllAttendance();
-      
-      // Filter attendance for current month
-      const monthAttendance = allAttendance.filter((record: any) => {
-        try {
-          const recordDate = new Date(record.date);
-          if (isNaN(recordDate.getTime())) return false;
-          return recordDate >= firstDay && recordDate <= lastDay;
-        } catch {
-          return false;
-        }
-      });
-      
-      setCalendarData(monthAttendance);
-    } catch (error) {
-      console.error('Error loading calendar data:', error);
+  const handleAttendanceDateRangeChange = (range: string) => {
+    const today = new Date();
+    let startDate = new Date();
+    let endDate = new Date();
+
+    switch (range) {
+      case 'thisWeek':
+        startDate = new Date(today.setDate(today.getDate() - today.getDay()));
+        endDate = new Date();
+        break;
+      case 'thisMonth':
+        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+        endDate = new Date();
+        break;
+      case 'last3Months':
+        startDate = new Date(today.getFullYear(), today.getMonth() - 3, 1);
+        endDate = new Date();
+        break;
+      case 'thisYear':
+        startDate = new Date(today.getFullYear(), 0,  1);
+        endDate = new Date();
+        break;
+      case 'custom':
+        return; // Don't auto-set dates for custom range
     }
-  };
 
-  // Load calendar data when calendar date or selected employee changes
-  useEffect(() => {
-    if (tabValue === 2) { // Calendar tab
-      loadCalendarData();
-    }
-  }, [calendarDate, selectedEmployee, tabValue]);
-
-  // Helper calculation functions for attendance
-
-  const calculateDepartmentAttendance = (employees: any[], todaysAttendance: any[]) => {
-    const departments = new Set(employees.map(e => e.department).filter(Boolean));
-    const result: Array<{ department: string; present: number; total: number }> = [];
-    
-    departments.forEach(dept => {
-      const deptEmployees = employees.filter(e => e.department === dept);
-      const deptPresent = todaysAttendance.filter(att => {
-        // attendance.employee_id now stores employee._id
-        const emp = employees.find(e => e._id === att.employee_id);
-        return emp && emp.department === dept && att.status === 'Present';
-      });
-      
-      result.push({
-        department: dept,
-        present: deptPresent.length,
-        total: deptEmployees.length
-      });
-    });
-    
-    return result.sort((a, b) => b.total - a.total);
+    setAttendanceTimeRange(range);
+    setAttendanceStartDate(startDate.toISOString().split('T')[0]);
+    setAttendanceEndDate(endDate.toISOString().split('T')[0]);
   };
 
   const loadEmployeeLifecycleMetrics = async () => {
+    setLoading(true);
     try {
       const [employees, salaryHistory, employmentHistory, attritionStats] = await Promise.all([
         databaseService.getEmployees(),
@@ -385,8 +306,13 @@ const ReportsAndAnalytics: React.FC = () => {
         topReasons,
         recentChanges: recentChangesList
       });
+
+      showSnackbar('Employee lifecycle data loaded successfully', 'success');
     } catch (error) {
       console.error('Error loading employee lifecycle metrics:', error);
+      showSnackbar('Failed to load employee lifecycle data', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -647,7 +573,7 @@ const ReportsAndAnalytics: React.FC = () => {
       });
       
       // Convert to CSV string
-      const csvContent = csvRows.map(row => row.join(',')).join('\\n');
+      const csvContent = csvRows.map(row => row.join(',')).join('\n');
       
       // Create download
       const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -679,185 +605,6 @@ const ReportsAndAnalytics: React.FC = () => {
     setTabValue(newValue);
   };
 
-  const handleFilterChange = (field: keyof ReportFilters) => (
-    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { target: { value: unknown } }
-  ) => {
-    const value = event.target.value as string;
-    setFilters(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleDateRangeChange = (range: string) => {
-    const today = new Date();
-    let startDate = new Date();
-    let endDate = new Date();
-
-    switch (range) {
-      case 'today':
-        startDate = new Date(today);
-        endDate = new Date(today);
-        break;
-      case 'thisWeek':
-        startDate = new Date(today.setDate(today.getDate() - today.getDay()));
-        endDate = new Date();
-        break;
-      case 'thisMonth':
-        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
-        endDate = new Date();
-        break;
-      case 'thisYear':
-        startDate = new Date(today.getFullYear(), 0, 1);
-        endDate = new Date();
-        break;
-      case 'custom':
-        return; // Don't auto-set dates for custom range
-    }
-
-    setFilters(prev => ({
-      ...prev,
-      dateRange: range,
-      startDate: startDate.toISOString().split('T')[0],
-      endDate: endDate.toISOString().split('T')[0]
-    }));
-  };
-
-  const exportReport = (format: 'pdf' | 'excel' | 'csv') => {
-    showSnackbar(`Exporting report as ${format.toUpperCase()}...`, 'success');
-    // Real export logic would be implemented here based on format
-  };
-
-  const getAttendanceRate = (present: number, total: number): number => {
-    return total > 0 ? (present / total) * 100 : 0;
-  };
-
-  // Calendar helper functions
-  const renderCalendarDays = () => {
-    const year = calendarDate.getFullYear();
-    const month = calendarDate.getMonth();
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const days = [];
-
-    // Add empty cells for days before the first day of the month
-    for (let i = 0; i < firstDay; i++) {
-      days.push(
-        <Box key={`empty-${i}`} sx={{ p: 1, minHeight: 60 }} />
-      );
-    }
-
-    // Add cells for each day of the month
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(year, month, day);
-      const dateStr = date.toISOString().split('T')[0];
-      const isToday = date.toDateString() === new Date().toDateString();
-      const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-      
-      // Get real attendance status from database
-      const attendanceStatus = getAttendanceStatus(date);
-      
-      days.push(
-        <Box
-          key={day}
-          sx={{
-            p: 1,
-            minHeight: 60,
-            border: 1,
-            borderColor: isToday ? 'primary.main' : 'grey.300',
-            borderRadius: 1,
-            backgroundColor: getDateBackgroundColor(attendanceStatus, isWeekend),
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            '&:hover': {
-              backgroundColor: 'grey.100',
-            }
-          }}
-          onClick={() => handleDateClick(date)}
-        >
-          <Typography variant="body2" fontWeight={isToday ? 'bold' : 'normal'}>
-            {day}
-          </Typography>
-          {attendanceStatus !== 'weekend' && (
-            <Typography variant="caption" color="white">
-              {getAttendanceLabel(attendanceStatus)}
-            </Typography>
-          )}
-        </Box>
-      );
-    }
-
-    return days;
-  };
-
-  const getAttendanceStatus = (date: Date) => {
-    // Real logic - query from calendarData
-    const day = date.getDay();
-    const dateStr = date.toISOString().split('T')[0];
-    
-    if (day === 0 || day === 6) return 'weekend'; // Weekend
-    
-    // Find attendance record for this date
-    const attendanceRecord = calendarData.find((record: any) => {
-      try {
-        const recordDate = new Date(record.date);
-        if (isNaN(recordDate.getTime())) return false;
-        const recordDateStr = recordDate.toISOString().split('T')[0];
-        return recordDateStr === dateStr && (selectedEmployee === 'all' || record.employee_id === selectedEmployee);
-      } catch {
-        return false;
-      }
-    });
-    
-    if (!attendanceRecord) {
-      // No record found - could be holiday or no data yet
-      return date > new Date() ? 'future' : 'absent';
-    }
-    
-    // Map database status to calendar status
-    switch (attendanceRecord.status) {
-      case 'Present': return 'present';
-      case 'Absent': return 'absent';
-      case 'Late': return 'late';
-      case 'Half Day': return 'halfday';
-      case 'Holiday': return 'holiday';
-      default: return 'present';
-    }
-  };
-
-  const getDateBackgroundColor = (status: string, isWeekend: boolean) => {
-    if (isWeekend) return 'grey.200';
-    switch (status) {
-      case 'present': return '#4caf50';
-      case 'absent': return '#f44336';
-      case 'late': return '#ff9800';
-      case 'halfday': return '#2196f3';
-      case 'holiday': return '#9e9e9e';
-      default: return 'transparent';
-    }
-  };
-
-  const getAttendanceLabel = (status: string) => {
-    switch (status) {
-      case 'present': return 'P';
-      case 'absent': return 'A';
-      case 'late': return 'L';
-      case 'halfday': return 'H';
-      case 'holiday': return 'X';
-      default: return '';
-    }
-  };
-
-  const handleDateClick = (date: Date) => {
-    // Handle date click - could show detailed attendance info for that date
-    // Reserved for future implementation
-  };
-
-  const exportChart = (chartType: string) => {
-    // Implement chart export functionality
-    showSnackbar(`Exporting ${chartType} chart...`, 'success');
-  };
-
   return (
     <Box>
       <Typography variant="h4" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -865,485 +612,206 @@ const ReportsAndAnalytics: React.FC = () => {
         Reports & Analytics
       </Typography>
 
-      {/* Filters Section */}
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>Report Filters</Typography>
-        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2, alignItems: 'center' }}>
-          <FormControl fullWidth>
-            <InputLabel>Date Range</InputLabel>
-            <Select
-              value={filters.dateRange}
-              onChange={(e) => handleDateRangeChange(e.target.value)}
-              label="Date Range"
-            >
-              <MenuItem value="today">Today</MenuItem>
-              <MenuItem value="thisWeek">This Week</MenuItem>
-              <MenuItem value="thisMonth">This Month</MenuItem>
-              <MenuItem value="thisYear">This Year</MenuItem>
-              <MenuItem value="custom">Custom Range</MenuItem>
-            </Select>
-          </FormControl>
-
-          {filters.dateRange === 'custom' && (
-            <>
-              <TextField
-                type="date"
-                label="Start Date"
-                value={filters.startDate}
-                onChange={handleFilterChange('startDate')}
-                InputLabelProps={{ shrink: true }}
-              />
-              <TextField
-                type="date"
-                label="End Date"
-                value={filters.endDate}
-                onChange={handleFilterChange('endDate')}
-                InputLabelProps={{ shrink: true }}
-              />
-            </>
-          )}
-
-          <FormControl fullWidth>
-            <InputLabel>Report Type</InputLabel>
-            <Select
-              value={filters.reportType}
-              onChange={handleFilterChange('reportType')}
-              label="Report Type"
-            >
-              <MenuItem value="all">All Reports</MenuItem>
-              <MenuItem value="attendance">Attendance Only</MenuItem>
-              <MenuItem value="financial">Financial Only</MenuItem>
-            </Select>
-          </FormControl>
-
-          <FormControl fullWidth>
-            <InputLabel>Department</InputLabel>
-            <Select
-              value={filters.department}
-              onChange={handleFilterChange('department')}
-              label="Department"
-            >
-              <MenuItem value="all">All Departments</MenuItem>
-              <MenuItem value="sales">Sales</MenuItem>
-              <MenuItem value="development">Development</MenuItem>
-              <MenuItem value="marketing">Marketing</MenuItem>
-              <MenuItem value="hr">HR</MenuItem>
-              <MenuItem value="finance">Finance</MenuItem>
-              <MenuItem value="operations">Operations</MenuItem>
-            </Select>
-          </FormControl>
-
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button 
-              variant="outlined" 
-              startIcon={<FileDownload />}
-              onClick={() => exportReport('pdf')}
-            >
-              Export PDF
-            </Button>
-            <Button 
-              variant="outlined" 
-              startIcon={<FileDownload />}
-              onClick={() => exportReport('excel')}
-            >
-              Export Excel
-            </Button>
-          </Box>
-        </Box>
-      </Paper>
-
       {/* Report Tabs */}
       <Paper sx={{ mb: 3 }}>
         <Tabs value={tabValue} onChange={handleTabChange} variant="scrollable" scrollButtons="auto">
-          <Tab label="Dashboard Overview" icon={<Assessment />} iconPosition="start" />
           <Tab label="Attendance Reports" icon={<People />} iconPosition="start" />
-          <Tab label="Attendance Calendar" icon={<CalendarMonth />} iconPosition="start" />
-          <Tab label="Financial Summary" icon={<AttachMoney />} iconPosition="start" />
           <Tab label="Employee Lifecycle" icon={<WorkHistory />} iconPosition="start" />
-          <Tab label="Data Visualizations" icon={<Timeline />} iconPosition="start" />
+          <Tab label="Wage & Payout Reports" icon={<AttachMoney />} iconPosition="start" />
         </Tabs>
       </Paper>
 
-      {/* Dashboard Overview Tab */}
+      {/* Attendance Reports Tab */}
       {tabValue === 0 && (
         <Box>
-          {/* Key Metrics Cards */}
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 2, mb: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Typography variant="h5" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <People color="primary" />
+              Attendance Reports
+            </Typography>
+
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+              <FormControl size="small" sx={{ minWidth: 150 }}>
+                <InputLabel>Time Range</InputLabel>
+                <Select
+                  value={attendanceTimeRange}
+                  onChange={(e) => handleAttendanceDateRangeChange(e.target.value)}
+                  label="Time Range"
+                >
+                  <MenuItem value="thisWeek">This Week</MenuItem>
+                  <MenuItem value="thisMonth">This Month</MenuItem>
+                  <MenuItem value="last3Months">Last 3 Months</MenuItem>
+                  <MenuItem value="thisYear">This Year</MenuItem>
+                  <MenuItem value="custom">Custom Range</MenuItem>
+                </Select>
+              </FormControl>
+
+              {attendanceTimeRange === 'custom' && (
+                <>
+                  <TextField
+                    type="date"
+                    label="Start Date"
+                    value={attendanceStartDate}
+                    onChange={(e) => setAttendanceStartDate(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    size="small"
+                  />
+                  <TextField
+                    type="date"
+                    label="End Date"
+                    value={attendanceEndDate}
+                    onChange={(e) => setAttendanceEndDate(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    size="small"
+                  />
+                </>
+              )}
+            </Box>
+          </Box>
+
+          {/* Summary Cards */}
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2, mb: 3 }}>
             <Card>
               <CardContent sx={{ textAlign: 'center' }}>
-                <Avatar sx={{ 
-                  mx: 'auto', 
-                  mb: 1, 
-                  background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)' 
-                }}>
-                  <AttachMoney />
+                <Avatar sx={{ mx: 'auto', mb: 1, bgcolor: 'primary.main' }}>
+                  <People />
                 </Avatar>
-                <Typography variant="h5" fontWeight="bold">{formatCurrency(financialMetrics.totalRevenue)}</Typography>
-                <Typography variant="body2" color="text.secondary">Total Revenue</Typography>
-                <Chip 
-                  label={`+${financialMetrics.profitMargin}% profit margin`} 
-                  color="success" 
-                  size="small" 
-                  sx={{ mt: 1 }}
-                />
+                <Typography variant="h4" fontWeight="bold">
+                  {attendanceReportData.reduce((sum, emp) => sum + emp.total_hours, 0).toFixed(0)}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">Total Hours Worked</Typography>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent sx={{ textAlign: 'center' }}>
+                <Avatar sx={{ mx: 'auto', mb: 1, bgcolor: 'warning.main' }}>
+                  <CalendarToday />
+                </Avatar>
+                <Typography variant="h4" fontWeight="bold">
+                  {attendanceReportData.reduce((sum, emp) => sum + emp.break_hours, 0).toFixed(0)}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">Total Break Hours</Typography>
               </CardContent>
             </Card>
 
             <Card>
               <CardContent sx={{ textAlign: 'center' }}>
                 <Avatar sx={{ mx: 'auto', mb: 1, bgcolor: 'success.main' }}>
-                  <People />
+                  <Analytics />
                 </Avatar>
-                <Typography variant="h5" fontWeight="bold">
-                  {attendanceMetrics.presentToday}/{attendanceMetrics.totalEmployees}
+                <Typography variant="h4" fontWeight="bold">
+                  {attendanceReportData.reduce((sum, emp) => sum + emp.effective_hours, 0).toFixed(0)}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">Attendance Today</Typography>
-                <Chip 
-                  label={`${((attendanceMetrics.presentToday / attendanceMetrics.totalEmployees) * 100).toFixed(1)}% present`} 
-                  color="success" 
-                  size="small" 
-                  sx={{ mt: 1 }}
-                />
+                <Typography variant="body2" color="text.secondary">Effective Hours</Typography>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent sx={{ textAlign: 'center' }}>
+                <Avatar sx={{ mx: 'auto', mb: 1, bgcolor: 'info.main' }}>
+                  <BarChart />
+                </Avatar>
+                <Typography variant="h4" fontWeight="bold">
+                  {(attendanceReportData.reduce((sum, emp) => sum + emp.total_hours, 0) / 
+                    (attendanceReportData.length || 1)).toFixed(1)}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">Avg Hours/Employee</Typography>
               </CardContent>
             </Card>
           </Box>
 
-          {/* Quick Insights */}
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 3 }}>
-            {/* Department Attendance */}
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>Department Attendance</Typography>
-              <Box sx={{ mt: 2 }}>
-                {attendanceMetrics.departmentAttendance.map((dept) => (
-                  <Box key={dept.department} sx={{ mb: 2 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                      <Typography variant="body2">{dept.department}</Typography>
-                      <Typography variant="body2">{dept.present}/{dept.total}</Typography>
-                    </Box>
-                    <Box
-                      sx={{
-                        height: 8,
-                        backgroundColor: 'grey.200',
-                        borderRadius: 1,
-                        overflow: 'hidden'
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          height: '100%',
-                          width: `${getAttendanceRate(dept.present, dept.total)}%`,
-                          background: getAttendanceRate(dept.present, dept.total) >= 90 
-                            ? 'linear-gradient(90deg, #10b981, #059669)'
-                            : getAttendanceRate(dept.present, dept.total) >= 70
-                            ? 'linear-gradient(90deg, #f59e0b, #d97706)'
-                            : 'linear-gradient(90deg, #ef4444, #dc2626)',
-                          transition: 'width 0.3s ease'
-                        }}
-                      />
-                    </Box>
-                    <Typography variant="caption" color="text.secondary">
-                      {getAttendanceRate(dept.present, dept.total).toFixed(1)}% attendance
-                    </Typography>
-                  </Box>
-                ))}
-              </Box>
-            </Paper>
-          </Box>
-        </Box>
-      )}
-
-      {/* Attendance Reports Tab */}
-      {tabValue === 1 && (
-        <Box>
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 3 }}>
-            {/* Attendance Overview */}
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>Attendance Overview</Typography>
-              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 2 }}>
-                <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'success.50', borderRadius: 1 }}>
-                  <Typography variant="h4" color="success.main" fontWeight="bold">
-                    {attendanceMetrics.presentToday}
-                  </Typography>
-                  <Typography variant="body2">Present Today</Typography>
-                </Box>
-                <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'error.50', borderRadius: 1 }}>
-                  <Typography variant="h4" color="error.main" fontWeight="bold">
-                    {attendanceMetrics.absentToday}
-                  </Typography>
-                  <Typography variant="body2">Absent Today</Typography>
-                </Box>
-                <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'warning.50', borderRadius: 1 }}>
-                  <Typography variant="h4" color="warning.main" fontWeight="bold">
-                    {attendanceMetrics.lateArrivals}
-                  </Typography>
-                  <Typography variant="body2">Late Arrivals</Typography>
-                </Box>
-                <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'info.50', borderRadius: 1 }}>
-                  <Typography variant="h4" color="info.main" fontWeight="bold">
-                    {attendanceMetrics.averageWorkingHours}h
-                  </Typography>
-                  <Typography variant="body2">Avg Working Hours</Typography>
-                </Box>
-              </Box>
-            </Paper>
-
-            {/* Department-wise Attendance */}
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>Department-wise Attendance</Typography>
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Department</TableCell>
-                      <TableCell align="center">Present</TableCell>
-                      <TableCell align="center">Total</TableCell>
-                      <TableCell align="center">Rate</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {attendanceMetrics.departmentAttendance.map((dept) => (
-                      <TableRow key={dept.department}>
-                        <TableCell>{dept.department}</TableCell>
-                        <TableCell align="center">{dept.present}</TableCell>
-                        <TableCell align="center">{dept.total}</TableCell>
-                        <TableCell align="center">
-                          <Chip
-                            label={`${getAttendanceRate(dept.present, dept.total).toFixed(1)}%`}
-                            color={getAttendanceRate(dept.present, dept.total) >= 90 ? 'success' : 
-                                   getAttendanceRate(dept.present, dept.total) >= 70 ? 'warning' : 'error'}
-                            size="small"
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Paper>
-          </Box>
-        </Box>
-      )}
-
-      {/* Attendance Calendar Tab */}
-      {tabValue === 2 && (
-        <Box>
+          {/* Working Hours Comparison - Bar Chart */}
           <Paper sx={{ p: 3, mb: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-              <Typography variant="h5" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <CalendarMonth color="primary" />
-                Attendance Calendar View
-              </Typography>
-              
-              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                <FormControl size="small" sx={{ minWidth: 200 }}>
-                  <InputLabel>Employee</InputLabel>
-                  <Select
-                    value={selectedEmployee}
-                    label="Employee"
-                    onChange={(e) => setSelectedEmployee(e.target.value)}
-                  >
-                    <MenuItem value="all">All Employees</MenuItem>
-                    {/* Will be populated with real employee data */}
-                  </Select>
-                </FormControl>
-                
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <IconButton onClick={() => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() - 1))}>
-                    <NavigateBefore />
-                  </IconButton>
-                  <Typography variant="h6" sx={{ minWidth: 150, textAlign: 'center' }}>
-                    {calendarDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-                  </Typography>
-                  <IconButton onClick={() => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1))}>
-                    <NavigateNext />
-                  </IconButton>
-                </Box>
-              </Box>
-            </Box>
-
-            {/* Calendar Grid */}
-            <Box sx={{ mb: 3 }}>
-              <Paper sx={{ p: 2 }}>
-                <Box sx={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: 'repeat(7, 1fr)', 
-                  gap: 1,
-                  mb: 2
-                }}>
-                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                    <Box key={day} sx={{ 
-                      p: 1, 
-                      textAlign: 'center', 
-                      fontWeight: 'bold',
-                      backgroundColor: 'grey.100',
-                      borderRadius: 1
-                    }}>
-                      {day}
-                    </Box>
-                  ))}
-                </Box>
-                
-                <Box sx={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: 'repeat(7, 1fr)', 
-                  gap: 1
-                }}>
-                  {renderCalendarDays()}
-                </Box>
-              </Paper>
-            </Box>
-
-            {/* Calendar Legend */}
-            <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', justifyContent: 'center' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Box sx={{ width: 16, height: 16, backgroundColor: '#4caf50', borderRadius: 1 }} />
-                <Typography variant="body2">Present</Typography>
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Box sx={{ width: 16, height: 16, backgroundColor: '#f44336', borderRadius: 1 }} />
-                <Typography variant="body2">Absent</Typography>
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Box sx={{ width: 16, height: 16, backgroundColor: '#ff9800', borderRadius: 1 }} />
-                <Typography variant="body2">Late</Typography>
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Box sx={{ width: 16, height: 16, backgroundColor: '#2196f3', borderRadius: 1 }} />
-                <Typography variant="body2">Half Day</Typography>
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Box sx={{ width: 16, height: 16, backgroundColor: '#9e9e9e', borderRadius: 1 }} />
-                <Typography variant="body2">Holiday</Typography>
-              </Box>
-            </Box>
+            <Typography variant="h6" gutterBottom>Total Working Hours by Employee</Typography>
+            <ResponsiveContainer width="100%" height={400}>
+              <RechartsBarChart data={attendanceReportData} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" />
+                <YAxis dataKey="employee_name" type="category" width={120} />
+                <RechartsTooltip />
+                <Legend />
+                <Bar dataKey="effective_hours" fill="#4caf50" name="Effective Hours" />
+                <Bar dataKey="break_hours" fill="#ff9800" name="Break Hours" />
+              </RechartsBarChart>
+            </ResponsiveContainer>
           </Paper>
 
-          {/* Calendar Summary Statistics */}
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2 }}>
-            <Card>
-              <CardContent sx={{ textAlign: 'center' }}>
-                <Typography variant="h4" color="success.main">92%</Typography>
-                <Typography variant="body2" color="text.secondary">Attendance Rate</Typography>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent sx={{ textAlign: 'center' }}>
-                <Typography variant="h4" color="primary.main">23</Typography>
-                <Typography variant="body2" color="text.secondary">Present Days</Typography>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent sx={{ textAlign: 'center' }}>
-                <Typography variant="h4" color="error.main">2</Typography>
-                <Typography variant="body2" color="text.secondary">Absent Days</Typography>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent sx={{ textAlign: 'center' }}>
-                <Typography variant="h4" color="warning.main">3</Typography>
-                <Typography variant="body2" color="text.secondary">Late Arrivals</Typography>
-              </CardContent>
-            </Card>
-          </Box>
-        </Box>
-      )}
+          {/* Attendance Comparison - Grouped Bar Chart */}
+          <Paper sx={{ p: 3, mb: 3 }}>
+            <Typography variant="h6" gutterBottom>Present vs Absent Days by Employee</Typography>
+            <ResponsiveContainer width="100%" height={400}>
+              <RechartsBarChart data={attendanceReportData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="employee_name" angle={-45} textAnchor="end" height={100} />
+                <YAxis />
+                <RechartsTooltip />
+                <Legend />
+                <Bar dataKey="present_days" fill="#4caf50" name="Present Days" />
+                <Bar dataKey="absent_days" fill="#f44336" name="Absent Days" />
+              </RechartsBarChart>
+            </ResponsiveContainer>
+          </Paper>
 
-      {/* Financial Summary Tab */}
-      {tabValue === 3 && (
-        <Box>
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 3 }}>
-            {/* Financial Overview */}
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>Financial Overview</Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography>Total Revenue:</Typography>
-                  <Typography fontWeight="bold" color="success.main">{formatCurrency(financialMetrics.totalRevenue)}</Typography>
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography>Total Expenses:</Typography>
-                  <Typography fontWeight="bold" color="error.main">{formatCurrency(financialMetrics.totalExpenses)}</Typography>
-                </Box>
-                <Divider />
-                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography>Net Profit:</Typography>
-                  <Typography fontWeight="bold" color="primary.main">{formatCurrency(financialMetrics.netProfit)}</Typography>
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography>Profit Margin:</Typography>
-                  <Typography fontWeight="bold" color="primary.main">{financialMetrics.profitMargin}%</Typography>
-                </Box>
-              </Box>
-            </Paper>
-
-            {/* Cash Flow Trend */}
-            <Paper sx={{ p: 3, gridColumn: 'span 2' }}>
-              <Typography variant="h6" gutterBottom>Monthly Cash Flow</Typography>
-              <Box sx={{ height: 250, display: 'flex', alignItems: 'end', gap: 2, mt: 2 }}>
-                {financialMetrics.cashFlow.map((data, index) => (
-                  <Box key={data.month} sx={{ flex: 1, textAlign: 'center' }}>
-                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'end', height: 200 }}>
-                      {/* Income Bar */}
-                      <Box
-                        sx={{
-                          flex: 1,
-                          height: `${(data.income / 35000) * 150}px`,
-                          background: 'linear-gradient(135deg, #10b981, #059669)',
-                          borderRadius: 1,
-                          minHeight: 10
-                        }}
-                      />
-                      {/* Expenses Bar */}
-                      <Box
-                        sx={{
-                          flex: 1,
-                          height: `${(data.expenses / 35000) * 150}px`,
-                          background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-                          borderRadius: 1,
-                          minHeight: 10
-                        }}
-                      />
-                      {/* Profit Bar */}
-                      <Box
-                        sx={{
-                          flex: 1,
-                          height: `${(data.profit / 35000) * 150}px`,
-                          background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
-                          borderRadius: 1,
-                          minHeight: 10
-                        }}
-                      />
-                    </Box>
-                    <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                      {data.month}
-                    </Typography>
-                    <Typography variant="caption" display="block" color="text.secondary">
-                      P: ₹{(data.profit / 1000).toFixed(0)}k
-                    </Typography>
-                  </Box>
-                ))}
-              </Box>
-              <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3, mt: 2 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Box sx={{ width: 16, height: 16, background: 'linear-gradient(135deg, #10b981, #059669)', borderRadius: 1 }} />
-                  <Typography variant="caption">Income</Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Box sx={{ width: 16, height: 16, background: 'linear-gradient(135deg, #ef4444, #dc2626)', borderRadius: 1 }} />
-                  <Typography variant="caption">Expenses</Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Box sx={{ width: 16, height: 16, background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)', borderRadius: 1 }} />
-                  <Typography variant="caption">Profit</Typography>
-                </Box>
-              </Box>
-            </Paper>
-          </Box>
+          {/* Detailed Table */}
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>Detailed Attendance Summary</Typography>
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell><strong>Employee</strong></TableCell>
+                    <TableCell align="right"><strong>Total Hours</strong></TableCell>
+                    <TableCell align="right"><strong>Break Hours</strong></TableCell>
+                    <TableCell align="right"><strong>Effective Hours</strong></TableCell>
+                    <TableCell align="right"><strong>Present Days</strong></TableCell>
+                    <TableCell align="right"><strong>Absent Days</strong></TableCell>
+                    <TableCell align="right"><strong>Avg Hours/Day</strong></TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {attendanceReportData.map((employee) => (
+                    <TableRow key={employee.employee_name}>
+                      <TableCell>{employee.employee_name}</TableCell>
+                      <TableCell align="right">{employee.total_hours.toFixed(2)}</TableCell>
+                      <TableCell align="right">{employee.break_hours.toFixed(2)}</TableCell>
+                      <TableCell align="right">
+                        <Chip 
+                          label={employee.effective_hours.toFixed(2)} 
+                          color="primary" 
+                          size="small" 
+                        />
+                      </TableCell>
+                      <TableCell align="right">
+                        <Chip 
+                          label={employee.present_days} 
+                          color="success" 
+                          size="small" 
+                        />
+                      </TableCell>
+                      <TableCell align="right">
+                        <Chip 
+                          label={employee.absent_days} 
+                          color={employee.absent_days > 2 ? 'error' : 'default'} 
+                          size="small" 
+                        />
+                      </TableCell>
+                      <TableCell align="right">
+                        {employee.present_days > 0 
+                          ? (employee.total_hours / employee.present_days).toFixed(2) 
+                          : '0.00'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Paper>
         </Box>
       )}
 
       {/* Employee Lifecycle Analytics Tab */}
-      {tabValue === 4 && (
+      {tabValue === 1 && (
         <Box>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
             <Typography variant="h5" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -1732,89 +1200,17 @@ const ReportsAndAnalytics: React.FC = () => {
         </Box>
       )}
 
-      {/* Data Visualizations Tab */}
-      {tabValue === 5 && (
+      {/* Wage & Payout Reports Tab */}
+      {tabValue === 2 && (
         <Box>
           <Typography variant="h5" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
-            <Timeline color="primary" />
-            Interactive Data Visualizations
+            <AttachMoney color="primary" />
+            Wage & Payout Reports
           </Typography>
 
-          {/* Department Attendance and Financial Analysis */}
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3, mb: 3 }}>
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>Department Attendance</Typography>
-              <ResponsiveContainer width="100%" height={300}>
-                <RechartsBarChart data={attendanceMetrics.departmentAttendance} layout="horizontal">
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" />
-                  <YAxis type="category" dataKey="department" />
-                  <RechartsTooltip />
-                  <Legend />
-                  <Bar dataKey="present" fill="#4caf50" name="Present" />
-                  <Bar dataKey="total" fill="#e0e0e0" name="Total" />
-                </RechartsBarChart>
-              </ResponsiveContainer>
-            </Paper>
-          </Box>
-
-          {/* Financial Cash Flow Chart */}
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h6" gutterBottom>Monthly Cash Flow Analysis</Typography>
-            <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={financialMetrics.cashFlow}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <RechartsTooltip formatter={(value) => [formatCurrency(Number(value)), '']} />
-                <Legend />
-                <Area 
-                  type="monotone" 
-                  dataKey="income" 
-                  stackId="1" 
-                  stroke="#4caf50" 
-                  fill="#4caf50" 
-                  name="Income"
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="expenses" 
-                  stackId="2" 
-                  stroke="#f44336" 
-                  fill="#f44336" 
-                  name="Expenses"
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="profit" 
-                  stroke="#2196f3" 
-                  strokeWidth={3}
-                  name="Profit"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </Paper>
-
-          {/* Export Options for Charts */}
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>Export Charts</Typography>
-            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-              <Button 
-                variant="outlined" 
-                startIcon={<GetApp />}
-                onClick={() => exportChart('attendance-chart')}
-              >
-                Export Attendance Chart
-              </Button>
-              <Button 
-                variant="outlined" 
-                startIcon={<GetApp />}
-                onClick={() => exportChart('cash-flow')}
-              >
-                Export Cash Flow
-              </Button>
-            </Box>
-          </Paper>
+          <Alert severity="info" sx={{ mb: 3 }}>
+            Wage & Payout Reports - Coming Soon
+          </Alert>
         </Box>
       )}
 
